@@ -1,0 +1,22 @@
+# Binaries
+bin/
+scheduler0
+scheduler0-*
+
+# Test coverage
+coverage.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config (optional - users may want to commit this)
+# .scheduler0/
+
