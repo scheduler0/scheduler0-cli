@@ -48,20 +48,37 @@ Download `scheduler0-windows-amd64.exe` from releases and add it to your PATH.
 scheduler0 init
 ```
 
-This will prompt you for:
+The CLI supports two authentication methods:
+
+### API Key Authentication (Managed/Hosted)
+For managed or hosted Scheduler0 instances, you'll be prompted for:
 - Base URL (e.g., `https://api.scheduler0.com`)
 - API Key
 - API Secret
 - Account ID
 
-Alternatively, you can provide these via flags:
-
+Or provide via flags:
 ```bash
 scheduler0 init \
   --base-url https://api.scheduler0.com \
   --api-key your-api-key \
   --api-secret your-api-secret \
   --account-id your-account-id
+```
+
+### Basic Authentication (Self-Hosted)
+For self-hosted Scheduler0 instances, you'll be prompted for:
+- Base URL (e.g., `http://localhost:7070`)
+- Username (set during infrastructure setup)
+- Password (set during infrastructure setup)
+
+Or provide via flags:
+```bash
+scheduler0 init \
+  --base-url http://localhost:7070 \
+  --username your-username \
+  --password your-password \
+  --auth-type basic
 ```
 
 Credentials are saved to `~/.scheduler0/config.json` and will be used for all subsequent commands.
@@ -235,21 +252,52 @@ scheduler0 async-tasks get <request-id>
 scheduler0 healthcheck
 ```
 
+## Authentication
+
+Scheduler0 CLI supports two authentication methods:
+
+### 1. API Key Authentication (Managed/Hosted)
+For managed or hosted Scheduler0 instances, use API Key + Secret authentication:
+- `X-API-Key`: Your API key
+- `X-API-Secret`: Your API secret  
+- `X-Account-ID`: Your account ID
+
+### 2. Basic Authentication (Self-Hosted)
+For self-hosted Scheduler0 instances, use username and password set during infrastructure setup:
+- Username and password configured during Scheduler0 setup
+- Uses HTTP Basic Authentication
+- No account ID required (single-tenant)
+
+The CLI will automatically detect which authentication method to use based on your configuration.
+
 ## Configuration
 
 Credentials are stored in `~/.scheduler0/config.json`:
 
+**API Key Authentication:**
 ```json
 {
   "base_url": "https://api.scheduler0.com",
   "api_key": "your-api-key",
   "api_secret": "your-api-secret",
-  "account_id": "your-account-id"
+  "account_id": "your-account-id",
+  "auth_type": "api_key"
+}
+```
+
+**Basic Authentication (Self-Hosted):**
+```json
+{
+  "base_url": "http://localhost:7070",
+  "username": "your-username",
+  "password": "your-password",
+  "auth_type": "basic"
 }
 ```
 
 You can override the saved configuration using flags:
 
+**API Key Auth:**
 ```bash
 scheduler0 projects list \
   --base-url https://api.example.com \
@@ -258,21 +306,35 @@ scheduler0 projects list \
   --account-id different-account
 ```
 
+**Basic Auth:**
+```bash
+scheduler0 projects list \
+  --base-url http://localhost:7070 \
+  --username admin \
+  --password secret
+```
+
 ## Environment Variables
 
 You can also use environment variables (though using `init` is recommended):
 
+**For API Key Authentication:**
 - `SCHEDULER0_BASE_URL`
 - `SCHEDULER0_API_KEY`
 - `SCHEDULER0_API_SECRET`
 - `SCHEDULER0_ACCOUNT_ID`
 
+**For Basic Authentication (Self-Hosted):**
+- `SCHEDULER0_BASE_URL`
+- `SCHEDULER0_USERNAME`
+- `SCHEDULER0_PASSWORD`
+
 ## Examples
 
-### Complete Workflow
+### Complete Workflow (API Key Authentication)
 
 ```bash
-# 1. Initialize
+# 1. Initialize with API key authentication
 scheduler0 init
 
 # 2. Create a project
@@ -298,6 +360,31 @@ scheduler0 jobs create \
 scheduler0 executions \
   --start-date "2024-01-01T00:00:00Z" \
   --end-date "2024-12-31T23:59:59Z"
+```
+
+### Self-Hosted Workflow (Basic Authentication)
+
+```bash
+# 1. Initialize with basic authentication for self-hosted instance
+scheduler0 init \
+  --base-url http://localhost:7070 \
+  --username admin \
+  --password your-password \
+  --auth-type basic
+
+# 2. Check cluster health
+scheduler0 healthcheck
+
+# 3. Create a project (no account ID needed for self-hosted)
+scheduler0 projects create --name "My Project" --created-by "admin"
+
+# 4. Create and manage jobs
+scheduler0 jobs create \
+  --project-id 1 \
+  --timezone "UTC" \
+  --spec "0 30 * * * *" \
+  --data '{"message": "Hello"}' \
+  --created-by "admin"
 ```
 
 ## Building from Source

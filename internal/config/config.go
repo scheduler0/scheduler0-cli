@@ -16,9 +16,15 @@ const (
 
 type Config struct {
 	BaseURL   string `json:"base_url"`
-	APIKey    string `json:"api_key"`
-	APISecret string `json:"api_secret"`
-	AccountID string `json:"account_id"`
+	// API Key authentication (for managed/hosted instances)
+	APIKey    string `json:"api_key,omitempty"`
+	APISecret string `json:"api_secret,omitempty"`
+	AccountID string `json:"account_id,omitempty"`
+	// Basic authentication (for self-hosted instances)
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+	// Auth type: "api_key" or "basic"
+	AuthType string `json:"auth_type,omitempty"`
 }
 
 // GetConfigPath returns the path to the config file
@@ -87,15 +93,38 @@ func (c *Config) Validate() error {
 	if c.BaseURL == "" {
 		return fmt.Errorf("base_url is required")
 	}
-	if c.APIKey == "" {
-		return fmt.Errorf("api_key is required")
+	
+	// Determine auth type if not explicitly set
+	if c.AuthType == "" {
+		if c.Username != "" && c.Password != "" {
+			c.AuthType = "basic"
+		} else if c.APIKey != "" && c.APISecret != "" {
+			c.AuthType = "api_key"
+		}
 	}
-	if c.APISecret == "" {
-		return fmt.Errorf("api_secret is required")
+	
+	// Validate based on auth type
+	if c.AuthType == "basic" {
+		if c.Username == "" {
+			return fmt.Errorf("username is required for basic authentication")
+		}
+		if c.Password == "" {
+			return fmt.Errorf("password is required for basic authentication")
+		}
+	} else if c.AuthType == "api_key" {
+		if c.APIKey == "" {
+			return fmt.Errorf("api_key is required for API key authentication")
+		}
+		if c.APISecret == "" {
+			return fmt.Errorf("api_secret is required for API key authentication")
+		}
+		if c.AccountID == "" {
+			return fmt.Errorf("account_id is required for API key authentication")
+		}
+	} else {
+		return fmt.Errorf("authentication required: provide either username/password (basic) or api_key/api_secret/account_id (api_key)")
 	}
-	if c.AccountID == "" {
-		return fmt.Errorf("account_id is required")
-	}
+	
 	return nil
 }
 
@@ -107,6 +136,9 @@ func GetConfigFromViper() (*Config, error) {
 		APIKey:    viper.GetString("api_key"),
 		APISecret: viper.GetString("api_secret"),
 		AccountID: viper.GetString("account_id"),
+		Username:  viper.GetString("username"),
+		Password:  viper.GetString("password"),
+		AuthType:  viper.GetString("auth_type"),
 	}
 
 	if err := config.Validate(); err != nil {

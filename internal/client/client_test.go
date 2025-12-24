@@ -15,6 +15,7 @@ func TestNewClient(t *testing.T) {
 		APIKey:    "test-key",
 		APISecret: "test-secret",
 		AccountID: "123",
+		AuthType:  "api_key",
 	}
 
 	cl, err := NewClient(cfg)
@@ -38,6 +39,7 @@ func TestNewClient_InvalidURL(t *testing.T) {
 		APIKey:    "test-key",
 		APISecret: "test-secret",
 		AccountID: "123",
+		AuthType:  "api_key",
 	}
 
 	cl, err := NewClient(cfg)
@@ -45,5 +47,27 @@ func TestNewClient_InvalidURL(t *testing.T) {
 	// The actual validation happens when making requests
 	assert.NotNil(t, cl)
 	assert.NoError(t, err)
+}
+
+func TestNewClient_BasicAuth(t *testing.T) {
+	cfg := &config.Config{
+		BaseURL:  "http://localhost:7070",
+		Username: "admin",
+		Password: "secret",
+		AuthType: "basic",
+	}
+
+	cl, err := NewClient(cfg)
+	require.NoError(t, err)
+	require.NotNil(t, cl)
+
+	// Verify client configuration
+	assert.Equal(t, "admin", cl.Username)
+	assert.Equal(t, "secret", cl.Password)
+	assert.Equal(t, "v1", cl.Version)
+
+	// Verify base URL
+	expectedURL, _ := url.Parse("http://localhost:7070")
+	assert.Equal(t, expectedURL.String(), cl.BaseURL.String())
 }
 

@@ -32,6 +32,7 @@ func TestSaveAndLoadConfig(t *testing.T) {
 		APIKey:    "test-key",
 		APISecret: "test-secret",
 		AccountID: "123",
+		AuthType:  "api_key",
 	}
 
 	// Create directory
@@ -73,12 +74,23 @@ func TestConfig_Validate(t *testing.T) {
 		errMsg  string
 	}{
 		{
-			name: "valid config",
+			name: "valid config - API key",
 			config: &Config{
 				BaseURL:   "https://api.test.com",
 				APIKey:    "test-key",
 				APISecret: "test-secret",
 				AccountID: "123",
+				AuthType:  "api_key",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid config - basic auth",
+			config: &Config{
+				BaseURL:  "http://localhost:7070",
+				Username: "admin",
+				Password: "secret",
+				AuthType: "basic",
 			},
 			wantErr: false,
 		},
@@ -98,6 +110,7 @@ func TestConfig_Validate(t *testing.T) {
 				BaseURL:   "https://api.test.com",
 				APISecret: "test-secret",
 				AccountID: "123",
+				AuthType:  "api_key",
 			},
 			wantErr: true,
 			errMsg:  "api_key is required",
@@ -108,6 +121,7 @@ func TestConfig_Validate(t *testing.T) {
 				BaseURL:   "https://api.test.com",
 				APIKey:    "test-key",
 				AccountID: "123",
+				AuthType:  "api_key",
 			},
 			wantErr: true,
 			errMsg:  "api_secret is required",
@@ -118,9 +132,38 @@ func TestConfig_Validate(t *testing.T) {
 				BaseURL:   "https://api.test.com",
 				APIKey:    "test-key",
 				APISecret: "test-secret",
+				AuthType:  "api_key",
 			},
 			wantErr: true,
 			errMsg:  "account_id is required",
+		},
+		{
+			name: "basic auth - missing username",
+			config: &Config{
+				BaseURL:  "http://localhost:7070",
+				Password: "secret",
+				AuthType: "basic",
+			},
+			wantErr: true,
+			errMsg:  "username is required",
+		},
+		{
+			name: "basic auth - missing password",
+			config: &Config{
+				BaseURL:  "http://localhost:7070",
+				Username: "admin",
+				AuthType: "basic",
+			},
+			wantErr: true,
+			errMsg:  "password is required",
+		},
+		{
+			name: "no authentication provided",
+			config: &Config{
+				BaseURL: "https://api.test.com",
+			},
+			wantErr: true,
+			errMsg:  "authentication required",
 		},
 	}
 

@@ -58,7 +58,8 @@ func TestRunInit_SavesConfig(t *testing.T) {
 func TestRunInit_ValidatesConfig(t *testing.T) {
 	// Test config validation directly
 	cfg := &config.Config{
-		BaseURL: "https://api.test.com",
+		BaseURL:  "https://api.test.com",
+		AuthType: "api_key",
 		// Missing required fields
 	}
 

@@ -18,12 +18,21 @@ This will save your credentials locally for use in subsequent commands.`,
 	RunE: runInit,
 }
 
+var (
+	initUsername string
+	initPassword string
+	initAuthType string
+)
+
 func init() {
 	rootCmd.AddCommand(initCmd)
 	initCmd.Flags().StringVar(&baseURL, "base-url", "", "Scheduler0 API base URL (e.g., https://api.scheduler0.com)")
-	initCmd.Flags().StringVar(&apiKey, "api-key", "", "Your API key")
-	initCmd.Flags().StringVar(&apiSecret, "api-secret", "", "Your API secret")
-	initCmd.Flags().StringVar(&accountID, "account-id", "", "Your account ID")
+	initCmd.Flags().StringVar(&apiKey, "api-key", "", "Your API key (for API key authentication)")
+	initCmd.Flags().StringVar(&apiSecret, "api-secret", "", "Your API secret (for API key authentication)")
+	initCmd.Flags().StringVar(&accountID, "account-id", "", "Your account ID (for API key authentication)")
+	initCmd.Flags().StringVar(&initUsername, "username", "", "Username (for basic authentication - self-hosted)")
+	initCmd.Flags().StringVar(&initPassword, "password", "", "Password (for basic authentication - self-hosted)")
+	initCmd.Flags().StringVar(&initAuthType, "auth-type", "", "Authentication type: 'api_key' or 'basic' (default: auto-detect)")
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
@@ -43,7 +52,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if baseURL == "" {
 		prompt := fmt.Sprintf("Base URL [%s]: ", cfg.BaseURL)
 		if cfg.BaseURL == "" {
-			prompt = "Base URL (e.g., https://api.scheduler0.com): "
+			prompt = "Base URL (e.g., https://api.scheduler0.com or http://localhost:7070): "
 		}
 		fmt.Print(prompt)
 		input, _ := reader.ReadString('\n')
@@ -57,58 +66,118 @@ func runInit(cmd *cobra.Command, args []string) error {
 		cfg.BaseURL = baseURL
 	}
 
-	// Get API Key
-	if apiKey == "" {
-		prompt := fmt.Sprintf("API Key [%s]: ", maskString(cfg.APIKey))
-		if cfg.APIKey == "" {
-			prompt = "API Key: "
+	// Determine authentication type
+	determinedAuthType := initAuthType
+	if determinedAuthType == "" {
+		// Auto-detect from flags or existing config
+		if (initUsername != "" || initPassword != "") || (cfg.Username != "" && cfg.Password != "") {
+			determinedAuthType = "basic"
+		} else if (apiKey != "" || apiSecret != "") || (cfg.APIKey != "" && cfg.APISecret != "") {
+			determinedAuthType = "api_key"
+		} else {
+			// Ask user to choose
+			fmt.Println("\nAuthentication Method:")
+			fmt.Println("1. API Key + Secret (for managed/hosted Scheduler0)")
+			fmt.Println("2. Username + Password (for self-hosted Scheduler0)")
+			fmt.Print("Choose authentication method (1 or 2) [1]: ")
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(input)
+			if input == "2" {
+				determinedAuthType = "basic"
+			} else {
+				determinedAuthType = "api_key"
+			}
 		}
-		fmt.Print(prompt)
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-		if input != "" {
-			cfg.APIKey = input
-		} else if cfg.APIKey == "" {
-			return fmt.Errorf("API key is required")
-		}
-	} else {
-		cfg.APIKey = apiKey
 	}
+	cfg.AuthType = determinedAuthType
 
-	// Get API Secret
-	if apiSecret == "" {
-		prompt := fmt.Sprintf("API Secret [%s]: ", maskString(cfg.APISecret))
-		if cfg.APISecret == "" {
-			prompt = "API Secret: "
+	if cfg.AuthType == "basic" {
+		// Basic authentication flow
+		if initUsername == "" {
+			prompt := fmt.Sprintf("Username [%s]: ", cfg.Username)
+			if cfg.Username == "" {
+				prompt = "Username (set during infrastructure setup): "
+			}
+			fmt.Print(prompt)
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(input)
+			if input != "" {
+				cfg.Username = input
+			} else if cfg.Username == "" {
+				return fmt.Errorf("username is required for basic authentication")
+			}
+		} else {
+			cfg.Username = initUsername
 		}
-		fmt.Print(prompt)
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-		if input != "" {
-			cfg.APISecret = input
-		} else if cfg.APISecret == "" {
-			return fmt.Errorf("API secret is required")
+
+		if initPassword == "" {
+			prompt := fmt.Sprintf("Password [%s]: ", maskString(cfg.Password))
+			if cfg.Password == "" {
+				prompt = "Password (set during infrastructure setup): "
+			}
+			fmt.Print(prompt)
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(input)
+			if input != "" {
+				cfg.Password = input
+			} else if cfg.Password == "" {
+				return fmt.Errorf("password is required for basic authentication")
+			}
+		} else {
+			cfg.Password = initPassword
 		}
 	} else {
-		cfg.APISecret = apiSecret
-	}
+		// API Key authentication flow
+		if apiKey == "" {
+			prompt := fmt.Sprintf("API Key [%s]: ", maskString(cfg.APIKey))
+			if cfg.APIKey == "" {
+				prompt = "API Key: "
+			}
+			fmt.Print(prompt)
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(input)
+			if input != "" {
+				cfg.APIKey = input
+			} else if cfg.APIKey == "" {
+				return fmt.Errorf("API key is required")
+			}
+		} else {
+			cfg.APIKey = apiKey
+		}
 
-	// Get Account ID
-	if accountID == "" {
-		prompt := fmt.Sprintf("Account ID [%s]: ", cfg.AccountID)
-		if cfg.AccountID == "" {
-			prompt = "Account ID: "
+		if apiSecret == "" {
+			prompt := fmt.Sprintf("API Secret [%s]: ", maskString(cfg.APISecret))
+			if cfg.APISecret == "" {
+				prompt = "API Secret: "
+			}
+			fmt.Print(prompt)
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(input)
+			if input != "" {
+				cfg.APISecret = input
+			} else if cfg.APISecret == "" {
+				return fmt.Errorf("API secret is required")
+			}
+		} else {
+			cfg.APISecret = apiSecret
 		}
-		fmt.Print(prompt)
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-		if input != "" {
-			cfg.AccountID = input
-		} else if cfg.AccountID == "" {
-			return fmt.Errorf("account ID is required")
+
+		if accountID == "" {
+			prompt := fmt.Sprintf("Account ID [%s]: ", cfg.AccountID)
+			if cfg.AccountID == "" {
+				prompt = "Account ID: "
+			}
+			fmt.Print(prompt)
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(input)
+			if input != "" {
+				cfg.AccountID = input
+			} else if cfg.AccountID == "" {
+				return fmt.Errorf("account ID is required for API key authentication")
+			}
+		} else {
+			cfg.AccountID = accountID
 		}
-	} else {
-		cfg.AccountID = accountID
 	}
 
 	// Validate config

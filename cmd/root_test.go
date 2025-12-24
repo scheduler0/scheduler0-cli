@@ -8,11 +8,13 @@ import (
 )
 
 func TestGetClientConfig_FromFlags(t *testing.T) {
-	// Set flags
+	// Test API key auth flags
 	baseURL = "https://api.test.com"
 	apiKey = "flag-key"
 	apiSecret = "flag-secret"
 	accountID = "456"
+	username = ""
+	password = ""
 
 	cfg, err := GetClientConfig()
 	require.NoError(t, err)
@@ -21,12 +23,38 @@ func TestGetClientConfig_FromFlags(t *testing.T) {
 	assert.Equal(t, "flag-key", cfg.APIKey)
 	assert.Equal(t, "flag-secret", cfg.APISecret)
 	assert.Equal(t, "456", cfg.AccountID)
+	assert.Equal(t, "api_key", cfg.AuthType)
 
 	// Reset flags
 	baseURL = ""
 	apiKey = ""
 	apiSecret = ""
 	accountID = ""
+	username = ""
+	password = ""
+}
+
+func TestGetClientConfig_FromBasicAuthFlags(t *testing.T) {
+	// Test basic auth flags
+	baseURL = "http://localhost:7070"
+	username = "admin"
+	password = "secret"
+	apiKey = ""
+	apiSecret = ""
+	accountID = ""
+
+	cfg, err := GetClientConfig()
+	require.NoError(t, err)
+	
+	assert.Equal(t, "http://localhost:7070", cfg.BaseURL)
+	assert.Equal(t, "admin", cfg.Username)
+	assert.Equal(t, "secret", cfg.Password)
+	assert.Equal(t, "basic", cfg.AuthType)
+
+	// Reset flags
+	baseURL = ""
+	username = ""
+	password = ""
 }
 
 func TestGetClientConfig_FromSavedConfig(t *testing.T) {
