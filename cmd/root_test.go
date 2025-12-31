@@ -18,7 +18,7 @@ func TestGetClientConfig_FromFlags(t *testing.T) {
 
 	cfg, err := GetClientConfig()
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, "https://api.test.com", cfg.BaseURL)
 	assert.Equal(t, "flag-key", cfg.APIKey)
 	assert.Equal(t, "flag-secret", cfg.APISecret)
@@ -45,7 +45,7 @@ func TestGetClientConfig_FromBasicAuthFlags(t *testing.T) {
 
 	cfg, err := GetClientConfig()
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, "http://localhost:7070", cfg.BaseURL)
 	assert.Equal(t, "admin", cfg.Username)
 	assert.Equal(t, "secret", cfg.Password)
@@ -80,4 +80,3 @@ func TestGetClientConfig_NoConfig(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to load config")
 	}
 }
-

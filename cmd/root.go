@@ -16,13 +16,23 @@ var (
 	password  string
 )
 
+var (
+	version = "dev"
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "scheduler0",
 	Short: "Scheduler0 CLI - A command-line interface for Scheduler0",
 	Long: `Scheduler0 CLI is a command-line tool for interacting with the Scheduler0 API.
 	
 Use 'scheduler0 init' to configure your credentials before using other commands.`,
-	Version: "1.0.0",
+	Version: version,
+}
+
+// SetVersion sets the version for the CLI (used during build)
+func SetVersion(v string) {
+	version = v
+	rootCmd.Version = v
 }
 
 // Execute runs the root command
@@ -50,7 +60,7 @@ func GetClientConfig() (*config.Config, error) {
 			AuthType: "basic",
 		}, nil
 	}
-	
+
 	// Check for API key auth flags
 	if baseURL != "" && apiKey != "" && apiSecret != "" && accountID != "" {
 		return &config.Config{
@@ -79,4 +89,3 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&username, "username", "", "Username (overrides config, for basic auth - self-hosted)")
 	rootCmd.PersistentFlags().StringVar(&password, "password", "", "Password (overrides config, for basic auth - self-hosted)")
 }
-

@@ -47,4 +47,3 @@ func NewClient(cfg *config.Config) (*scheduler0_client.Client, error) {
 
 	return client, nil
 }
-

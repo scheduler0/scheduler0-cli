@@ -15,7 +15,7 @@ const (
 )
 
 type Config struct {
-	BaseURL   string `json:"base_url"`
+	BaseURL string `json:"base_url"`
 	// API Key authentication (for managed/hosted instances)
 	APIKey    string `json:"api_key,omitempty"`
 	APISecret string `json:"api_secret,omitempty"`
@@ -93,7 +93,7 @@ func (c *Config) Validate() error {
 	if c.BaseURL == "" {
 		return fmt.Errorf("base_url is required")
 	}
-	
+
 	// Determine auth type if not explicitly set
 	if c.AuthType == "" {
 		if c.Username != "" && c.Password != "" {
@@ -102,7 +102,7 @@ func (c *Config) Validate() error {
 			c.AuthType = "api_key"
 		}
 	}
-	
+
 	// Validate based on auth type
 	if c.AuthType == "basic" {
 		if c.Username == "" {
@@ -124,7 +124,7 @@ func (c *Config) Validate() error {
 	} else {
 		return fmt.Errorf("authentication required: provide either username/password (basic) or api_key/api_secret/account_id (api_key)")
 	}
-	
+
 	return nil
 }
 
@@ -147,4 +147,3 @@ func GetConfigFromViper() (*Config, error) {
 
 	return config, nil
 }
-

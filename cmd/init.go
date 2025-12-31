@@ -206,4 +206,3 @@ func maskString(s string) string {
 	}
 	return s[:2] + "****" + s[len(s)-2:]
 }
-

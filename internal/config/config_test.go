@@ -13,7 +13,7 @@ import (
 func TestGetConfigPath(t *testing.T) {
 	path, err := GetConfigPath()
 	require.NoError(t, err)
-	
+
 	homeDir, _ := os.UserHomeDir()
 	expected := filepath.Join(homeDir, configDirName, configFileName)
 	assert.Equal(t, expected, path)
@@ -22,11 +22,11 @@ func TestGetConfigPath(t *testing.T) {
 func TestSaveAndLoadConfig(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
-	
+
 	// Save config directly to temp directory
 	configDir := filepath.Join(tempDir, configDirName)
 	configPath := filepath.Join(configDir, configFileName)
-	
+
 	cfg := &Config{
 		BaseURL:   "https://api.test.com",
 		APIKey:    "test-key",
@@ -48,11 +48,11 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	// Load and verify
 	data, err = os.ReadFile(configPath)
 	require.NoError(t, err)
-	
+
 	var loaded Config
 	err = json.Unmarshal(data, &loaded)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, cfg.BaseURL, loaded.BaseURL)
 	assert.Equal(t, cfg.APIKey, loaded.APIKey)
 	assert.Equal(t, cfg.APISecret, loaded.APISecret)
@@ -185,4 +185,3 @@ func TestSaveConfig_CreatesDirectory(t *testing.T) {
 	// This is tested indirectly through TestSaveAndLoadConfig
 	// Direct testing would require mocking GetConfigPath which is a function, not a variable
 }
-

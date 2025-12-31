@@ -70,4 +70,3 @@ func TestNewClient_BasicAuth(t *testing.T) {
 	expectedURL, _ := url.Parse("http://localhost:7070")
 	assert.Equal(t, expectedURL.String(), cl.BaseURL.String())
 }
-

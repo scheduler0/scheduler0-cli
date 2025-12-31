@@ -1,0 +1,104 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            binary-name: scheduler0-linux-amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            binary-name: scheduler0-linux-arm64
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            binary-name: scheduler0-darwin-amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            binary-name: scheduler0-darwin-arm64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            binary-name: scheduler0-windows-amd64.exe
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        cache-dependency-path: scheduler0-cli/go.sum
+    
+    - name: Download dependencies
+      working-directory: scheduler0-cli
+      run: go mod download
+    
+    - name: Build binary
+      working-directory: scheduler0-cli
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        VERSION: ${{ github.ref_name }}
+      run: |
+        VERSION=${VERSION:-dev}
+        go build -ldflags "-X main.version=$VERSION" -o ${{ matrix.binary-name }} .
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.binary-name }}
+        path: scheduler0-cli/${{ matrix.binary-name }}
+        retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        pattern: scheduler0-*
+        merge-multiple: false
+    
+    - name: Create checksums
+      run: |
+        cd artifacts
+        find . -type f -name "scheduler0-*" -exec sh -c 'sha256sum "$1" > "$1.sha256"' _ {} \;
+        find . -name "*.sha256" -exec cat {} \; > checksums.txt || true
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/**/scheduler0-*
+          artifacts/**/checksums.txt
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
