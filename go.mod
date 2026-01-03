@@ -3,7 +3,7 @@ module github.com/scheduler0/scheduler0-cli
 go 1.23
 
 require (
-	github.com/scheduler0/scheduler0-go-client v1.1.3
+	github.com/scheduler0/scheduler0-go-client v1.3.1
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0

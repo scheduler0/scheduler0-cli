@@ -197,6 +197,24 @@ scheduler0 executors update <executor-id> \
 scheduler0 executors delete <executor-id> --deleted-by "user-id"
 ```
 
+### AI-Powered Job Creation
+
+```bash
+# Create job configurations from a natural language prompt
+scheduler0 prompt \
+  --prompt "Send weekly reports every Monday at 9 AM" \
+  --purposes "reporting,communication" \
+  --events "weekly_cycle" \
+  --recipients "team@example.com,manager@example.com" \
+  --channels "email" \
+  --timezone "America/New_York"
+
+# Simple prompt (only required field)
+scheduler0 prompt --prompt "Follow up 2 days after the demo"
+```
+
+**Note**: This endpoint requires credits. Each prompt execution consumes 1 credit. If you have insufficient credits, you'll receive an error.
+
 ### Executions
 
 ```bash
@@ -259,7 +277,7 @@ Scheduler0 CLI supports two authentication methods:
 ### 1. API Key Authentication (Managed/Hosted)
 For managed or hosted Scheduler0 instances, use API Key + Secret authentication:
 - `X-API-Key`: Your API key
-- `X-API-Secret`: Your API secret  
+- `X-Secret-Key`: Your API secret  
 - `X-Account-ID`: Your account ID
 
 ### 2. Basic Authentication (Self-Hosted)
@@ -348,13 +366,19 @@ scheduler0 executors create \
   --webhook-method "POST" \
   --created-by "user-123"
 
-# 4. Create a job
+# 4. Create a job (or use AI prompt to generate job configurations)
 scheduler0 jobs create \
   --project-id 1 \
   --timezone "UTC" \
   --spec "0 30 * * * *" \
   --data '{"message": "Hello"}' \
   --created-by "user-123"
+
+# Alternative: Use AI to generate job configurations from natural language
+scheduler0 prompt \
+  --prompt "Send weekly reports every Monday at 9 AM" \
+  --purposes "reporting" \
+  --timezone "America/New_York"
 
 # 5. List executions
 scheduler0 executions \
