@@ -55,18 +55,12 @@ func TestNewClient_BasicAuth(t *testing.T) {
 		Username: "admin",
 		Password: "secret",
 		AuthType: "basic",
-	}
-
-	cl, err := NewClient(cfg)
+	}	cl, err := NewClient(cfg)
 	require.NoError(t, err)
-	require.NotNil(t, cl)
-
-	// Verify client configuration
+	require.NotNil(t, cl)	// Verify client configuration
 	assert.Equal(t, "admin", cl.Username)
 	assert.Equal(t, "secret", cl.Password)
-	assert.Equal(t, "v1", cl.Version)
-
-	// Verify base URL
+	assert.Equal(t, "v1", cl.Version)	// Verify base URL
 	expectedURL, _ := url.Parse("http://localhost:7070")
 	assert.Equal(t, expectedURL.String(), cl.BaseURL.String())
 }
