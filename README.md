@@ -230,15 +230,30 @@ scheduler0 executions \
 
 ### Credentials
 
+Credentials carry **scopes** (`read`, `write`, `execute`) that control which routes
+they can call, and they automatically expire **90 days** after creation. Use
+`credentials rotate` to swap an active credential out without losing its scopes.
+
 ```bash
-# List credentials
-scheduler0 credentials list [--limit 10] [--offset 0]
+# List credentials (JSON by default; `--output table` shows status, scopes, expiry)
+scheduler0 credentials list [--limit 10] [--offset 0] [--output json|table]
 
 # Get credential details
 scheduler0 credentials get <credential-id>
 
-# Create a credential
-scheduler0 credentials create --created-by "user-id"
+# Create a credential. --scopes accepts a comma-separated subset of read,write,execute
+# and defaults to all three.
+scheduler0 credentials create \
+  --created-by "user-id" \
+  --scopes "read,write"
+
+# Rotate a credential: creates a new one with the same scopes, prints the new
+# key/secret, then archives the old one. Use --scopes to change scopes during
+# rotation; --archived-by defaults to --created-by.
+scheduler0 credentials rotate <credential-id> \
+  --created-by "user-id" \
+  [--scopes "read,write"] \
+  [--archived-by "user-id"]
 
 # Update a credential
 scheduler0 credentials update <credential-id> --archived true --modified-by "user-id"
