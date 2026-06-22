@@ -10,10 +10,6 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
 
-    defaults:
-      run:
-        working-directory: scheduler0-cli
-
     strategy:
       matrix:
         include:
@@ -34,7 +30,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go-version }}
-        cache-dependency-path: scheduler0-cli/go.sum
+        cache-dependency-path: go.sum
     
     - name: Download dependencies
       run: go mod download
@@ -46,7 +42,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23'
       uses: codecov/codecov-action@v4
       with:
-        file: ./scheduler0-cli/coverage.out
+        file: ./coverage.out
         flags: unittests
         name: codecov-cli
         fail_ci_if_error: false
