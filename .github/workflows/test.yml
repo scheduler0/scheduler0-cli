@@ -15,10 +15,13 @@ jobs:
         include:
           - os: ubuntu-latest
             go-version: '1.25'
+            race: -race
           - os: macos-latest
             go-version: '1.25'
+            race: -race
           - os: windows-latest
             go-version: '1.25'
+            race: ''
     
     steps:
     - name: Checkout code
@@ -34,7 +37,7 @@ jobs:
       run: go mod download
     
     - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out ./...
+      run: go test -v ${{ matrix.race }} -coverprofile=coverage.out ./...
     
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest'
