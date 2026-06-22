@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -103,20 +105,43 @@ var credentialsArchiveCmd = &cobra.Command{
 	RunE:  runCredentialsArchive,
 }
 
-var credentialsRotateCmd = &cobra.Command{
-	Use:   "rotate [credential-id]",
-	Short: "Rotate a credential by creating a new one with the same scopes and archiving the old one",
-	Long: `Rotate a credential.
+var credentialsGenerateSecretKeyCmd = &cobra.Command{
+	Use:   "generate-secret-key",
+	Short: "Generate random AES-256 secret keys for use during secret rotation",
+	Long: `Generate one or more cryptographically random 64-character hex strings suitable
+for use as a Scheduler0 SecretKey (AES-256).
 
-This is a CLI-side helper around the existing Scheduler0 credential API: it loads
-the source credential, creates a new credential with the same scopes (or any
-override passed via --scopes), then archives the original credential. The new
-credential's API key and secret are printed to stdout — store them securely.
+This command runs entirely offline — no API call or authentication is required.
+Use it as the first step of the key-rotation workflow:
 
-Credentials expire 90 days after creation; rotate rather than archive-and-recreate
-to preserve the same scope configuration.`,
-	Args: cobra.ExactArgs(1),
-	RunE: runCredentialsRotate,
+  1. scheduler0 credentials generate-secret-key   # produce a new key
+  2. Update SecretKey in your secrets source (file, env var, SSM, etc.)
+  3. scheduler0 credentials rotate-secret         # re-encrypt stored credentials
+
+Use --count to generate multiple keys in a single call, which is convenient
+when you want to stage several rotations (A → B → C) without re-running the
+command each time.`,
+	RunE: runCredentialsGenerateSecretKey,
+}
+
+var credentialsRotateSecretCmd = &cobra.Command{
+	Use:   "rotate-secret",
+	Short: "Re-encrypt all active credentials with a new secret key (self-hosting only)",
+	Long: `Re-encrypt all active, non-expired credentials from the old SecretKey to a new one.
+
+This command is for operators who have rotated the server's SecretKey in their
+secrets source (file, SSM, AWS Secrets Manager, or env var) and need to update
+the encrypted api_secret stored for every active credential.
+
+Steps:
+  1. Update SecretKey in your secrets source.
+  2. Run this command — it calls POST /api/v1/credentials/rotate-secret on the server.
+  3. The server saves the old key as a savepoint, reloads the new key, and re-encrypts
+     credentials in batches. The savepoint is deleted on completion.
+  4. If interrupted, re-run this command — the server will resume from the savepoint.
+
+Requires Basic Authentication (--username / --password or saved config with auth_type=basic).`,
+	RunE: runCredentialsRotateSecret,
 }
 
 func init() {
@@ -127,8 +152,12 @@ func init() {
 	credentialsCmd.AddCommand(credentialsUpdateCmd)
 	credentialsCmd.AddCommand(credentialsDeleteCmd)
 	credentialsCmd.AddCommand(credentialsArchiveCmd)
-	credentialsCmd.AddCommand(credentialsRotateCmd)
+	credentialsCmd.AddCommand(credentialsRotateSecretCmd)
+	credentialsCmd.AddCommand(credentialsGenerateSecretKeyCmd)
 
+	credentialsGenerateSecretKeyCmd.Flags().Int("count", 1, "Number of secret keys to generate")
+
+	credentialsListCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	credentialsListCmd.Flags().Int("limit", 10, "Maximum number of items to return")
 	credentialsListCmd.Flags().Int("offset", 0, "Number of items to skip")
 	credentialsListCmd.Flags().String("order-by", "date_created", "Field to order by")
@@ -149,17 +178,18 @@ func init() {
 
 	credentialsArchiveCmd.Flags().String("archived-by", "", "User who archived the credential (required)")
 	credentialsArchiveCmd.MarkFlagRequired("archived-by")
-
-	credentialsRotateCmd.Flags().String("created-by", "", "User who created the new credential (required)")
-	credentialsRotateCmd.Flags().String("archived-by", "", "User who archived the old credential (defaults to --created-by)")
-	credentialsRotateCmd.Flags().String("scopes", "", "Override scopes for the new credential; defaults to the source credential's scopes (csv)")
-	credentialsRotateCmd.MarkFlagRequired("created-by")
 }
 
 func runCredentialsList(cmd *cobra.Command, args []string) error {
 	cfg, err := GetClientConfig()
 	if err != nil {
 		return err
+	}
+
+	applyAccountIDFlag(cmd, cfg)
+
+	if cfg.AccountID == "" {
+		return fmt.Errorf("account id is required to list credentials; provide --account-id or set account_id in your config")
 	}
 
 	cl, err := client.NewClient(cfg)
@@ -173,7 +203,15 @@ func runCredentialsList(cmd *cobra.Command, args []string) error {
 	orderDirection, _ := cmd.Flags().GetString("order-direction")
 	outputMode, _ := cmd.Flags().GetString("output")
 
+	// Parse account ID to int64 for the explicit per-request override path in
+	// ListCredentials, so it wins over any c.AccountID set from config.
+	var accountIDInt int64
+	if cfg.AccountID != "" {
+		accountIDInt, _ = strconv.ParseInt(cfg.AccountID, 10, 64)
+	}
+
 	params := scheduler0_client.ListCredentialsParams{
+		AccountID:        accountIDInt,
 		Limit:            limit,
 		Offset:           offset,
 		OrderBy:          orderBy,
@@ -307,7 +345,7 @@ func runCredentialsCreate(cmd *cobra.Command, args []string) error {
 	output, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Println(string(output))
 	if result != nil && result.Data.ExpiresAt != nil {
-		fmt.Fprintf(cmd.OutOrStderr(), "\nCredential expires at: %s (rotate before then with `scheduler0 credentials rotate %d`)\n", *result.Data.ExpiresAt, result.Data.ID)
+		fmt.Fprintf(cmd.OutOrStderr(), "\nCredential expires at: %s. Store the api_secret returned above — it is shown once and cannot be retrieved again.\n", *result.Data.ExpiresAt)
 	}
 	return nil
 }
@@ -392,75 +430,53 @@ func runCredentialsArchive(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// runCredentialsRotate orchestrates a "rotate in place" workflow client-side:
-// fetch the source credential to get its scopes, create a fresh credential with
-// the same (or overridden) scopes, then archive the original. We deliberately do
-// the archive *after* create succeeds so the caller is never left without a
-// working credential if the create call fails.
-func runCredentialsRotate(cmd *cobra.Command, args []string) error {
+// runCredentialsRotateSecret calls POST /credentials/rotate-secret on the server to
+// re-encrypt all active credentials with the new SecretKey. Requires basic auth.
+func runCredentialsRotateSecret(cmd *cobra.Command, args []string) error {
 	cfg, err := GetClientConfig()
 	if err != nil {
 		return err
 	}
 
+	if cfg.Username == "" || cfg.Password == "" {
+		return fmt.Errorf("rotate-secret requires basic authentication: set username and password in your config or use --username and --password flags")
+	}
+	cfg.AuthType = "basic"
+
 	cl, err := client.NewClient(cfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create client: %w", err)
 	}
 
-	credentialID := args[0]
-	createdBy, _ := cmd.Flags().GetString("created-by")
-	archivedBy, _ := cmd.Flags().GetString("archived-by")
-	if strings.TrimSpace(archivedBy) == "" {
-		archivedBy = createdBy
-	}
-	scopesRaw, _ := cmd.Flags().GetString("scopes")
+	fmt.Fprintln(cmd.OutOrStdout(), "Starting credential secret rotation...")
+	fmt.Fprintln(cmd.OutOrStdout(), "Ensure you have already updated SecretKey in your secrets source before proceeding.")
 
-	source, err := cl.GetCredential(credentialID)
+	result, err := cl.RotateCredentialSecret()
 	if err != nil {
-		return fmt.Errorf("failed to load source credential %s: %w", credentialID, err)
-	}
-	if source == nil {
-		return fmt.Errorf("source credential %s not found", credentialID)
-	}
-	if source.Data.Archived {
-		return fmt.Errorf("source credential %s is already archived; nothing to rotate", credentialID)
+		return fmt.Errorf("rotation failed: %w", err)
 	}
 
-	var scopes []string
-	if strings.TrimSpace(scopesRaw) != "" {
-		scopes, err = parseCredentialScopes(scopesRaw)
-		if err != nil {
-			return err
+	fmt.Fprintf(cmd.OutOrStdout(), "Rotation complete: %d credential(s) re-encrypted.\n", result.Data.Rotated)
+	return nil
+}
+
+func runCredentialsGenerateSecretKey(cmd *cobra.Command, args []string) error {
+	count, _ := cmd.Flags().GetInt("count")
+	if count < 1 {
+		return fmt.Errorf("--count must be at least 1")
+	}
+
+	keys := make([]string, count)
+	for i := range keys {
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			return fmt.Errorf("failed to generate random bytes: %w", err)
 		}
-	} else {
-		scopes = append(scopes, source.Data.Scopes...)
-		if len(scopes) == 0 {
-			return fmt.Errorf("source credential %s has no scopes; pass --scopes to set them explicitly", credentialID)
-		}
+		keys[i] = hex.EncodeToString(b)
 	}
 
-	created, err := cl.CreateCredential(&scheduler0_client.CredentialCreateRequestBody{
-		CreatedBy: createdBy,
-		Scopes:    scopes,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create replacement credential: %w", err)
-	}
-
-	output, _ := json.MarshalIndent(created, "", "  ")
-	fmt.Println(string(output))
-
-	if err := cl.ArchiveCredential(credentialID, archivedBy); err != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\nWARNING: created replacement credential %d but failed to archive %s: %v\n", created.Data.ID, credentialID, err)
-		fmt.Fprintf(cmd.ErrOrStderr(), "Run `scheduler0 credentials archive %s --archived-by %s` to finish the rotation.\n", credentialID, archivedBy)
-		return fmt.Errorf("rotation incomplete: archive of %s failed", credentialID)
-	}
-
-	fmt.Fprintf(cmd.OutOrStderr(), "\nRotation complete: store the new API key/secret securely — old credential %s is now archived.\n", credentialID)
-	if created.Data.ExpiresAt != nil {
-		fmt.Fprintf(cmd.OutOrStderr(), "New credential %d expires at %s.\n", created.Data.ID, *created.Data.ExpiresAt)
-	}
+	output, _ := json.MarshalIndent(map[string][]string{"secret_keys": keys}, "", "  ")
+	fmt.Fprintln(cmd.OutOrStdout(), string(output))
 	return nil
 }
 

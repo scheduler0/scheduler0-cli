@@ -78,7 +78,22 @@ func GetClientConfig() (*config.Config, error) {
 		return nil, fmt.Errorf("failed to load config: %w\nRun 'scheduler0 init' to configure credentials", err)
 	}
 
+	// Allow the --account-id flag to override the configured account for a single command
+	if accountID != "" {
+		cfg.AccountID = accountID
+	}
+
 	return cfg, nil
+}
+
+// applyAccountIDFlag reads the local --account-id flag on cmd and patches cfg if
+// the flag was explicitly provided. Subcommands that register their own
+// --account-id flag should call this immediately after GetClientConfig so the
+// per-command value takes precedence over the global persistent flag and config.
+func applyAccountIDFlag(cmd *cobra.Command, cfg *config.Config) {
+	if f := cmd.Flags().Lookup("account-id"); f != nil && f.Changed {
+		cfg.AccountID = f.Value.String()
+	}
 }
 
 func init() {

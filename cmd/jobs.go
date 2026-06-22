@@ -61,12 +61,16 @@ func init() {
 	jobsCmd.AddCommand(jobsUpdateCmd)
 	jobsCmd.AddCommand(jobsDeleteCmd)
 
+	jobsListCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	jobsListCmd.Flags().String("project-id", "", "Filter by project ID")
 	jobsListCmd.Flags().Int("limit", 10, "Maximum number of items to return")
 	jobsListCmd.Flags().Int("offset", 0, "Number of items to skip")
 	jobsListCmd.Flags().String("order-by", "date_created", "Field to order by")
 	jobsListCmd.Flags().String("order-direction", "desc", "Order direction (asc/desc)")
 
+	jobsGetCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
+
+	jobsCreateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	jobsCreateCmd.Flags().Int64("project-id", 0, "Project ID (required)")
 	jobsCreateCmd.Flags().String("timezone", "UTC", "Timezone (required)")
 	jobsCreateCmd.Flags().Int64("executor-id", 0, "Executor ID")
@@ -81,6 +85,7 @@ func init() {
 	jobsCreateCmd.MarkFlagRequired("project-id")
 	jobsCreateCmd.MarkFlagRequired("created-by")
 
+	jobsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	jobsUpdateCmd.Flags().Int64("project-id", 0, "Project ID")
 	jobsUpdateCmd.Flags().Int64("executor-id", 0, "Executor ID")
 	jobsUpdateCmd.Flags().String("data", "", "Job payload data")
@@ -94,6 +99,7 @@ func init() {
 	jobsUpdateCmd.Flags().String("modified-by", "", "User who modified the job (required)")
 	jobsUpdateCmd.MarkFlagRequired("modified-by")
 
+	jobsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	jobsDeleteCmd.Flags().String("deleted-by", "", "User who deleted the job (required)")
 	jobsDeleteCmd.MarkFlagRequired("deleted-by")
 }
@@ -103,6 +109,7 @@ func runJobsList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -138,6 +145,7 @@ func runJobsGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -160,6 +168,7 @@ func runJobsCreate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -211,6 +220,7 @@ func runJobsUpdate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -264,6 +274,7 @@ func runJobsDelete(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {

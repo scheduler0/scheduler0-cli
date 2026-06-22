@@ -33,7 +33,7 @@ var executorsGetCmd = &cobra.Command{
 var executorsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new executor",
-	Long:  "Create a new executor (webhook_url, cloud_function, or container)",
+	Long:  "Create a new executor (webhook_url or cloud_function)",
 	RunE:  runExecutorsCreate,
 }
 
@@ -61,13 +61,17 @@ func init() {
 	executorsCmd.AddCommand(executorsUpdateCmd)
 	executorsCmd.AddCommand(executorsDeleteCmd)
 
+	executorsListCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	executorsListCmd.Flags().Int("limit", 10, "Maximum number of items to return")
 	executorsListCmd.Flags().Int("offset", 0, "Number of items to skip")
 	executorsListCmd.Flags().String("order-by", "date_created", "Field to order by")
 	executorsListCmd.Flags().String("order-direction", "desc", "Order direction (asc/desc)")
 
+	executorsGetCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
+
+	executorsCreateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	executorsCreateCmd.Flags().String("name", "", "Executor name (required)")
-	executorsCreateCmd.Flags().String("type", "", "Executor type: webhook_url, cloud_function, or container (required)")
+	executorsCreateCmd.Flags().String("type", "", "Executor type: webhook_url or cloud_function (required)")
 	executorsCreateCmd.Flags().String("region", "", "Cloud region")
 	executorsCreateCmd.Flags().String("cloud-provider", "", "Cloud provider")
 	executorsCreateCmd.Flags().String("cloud-resource-url", "", "Cloud resource URL")
@@ -81,6 +85,7 @@ func init() {
 	executorsCreateCmd.MarkFlagRequired("type")
 	executorsCreateCmd.MarkFlagRequired("created-by")
 
+	executorsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	executorsUpdateCmd.Flags().String("name", "", "Executor name")
 	executorsUpdateCmd.Flags().String("type", "", "Executor type")
 	executorsUpdateCmd.Flags().String("region", "", "Cloud region")
@@ -94,6 +99,7 @@ func init() {
 	executorsUpdateCmd.Flags().String("modified-by", "", "User who modified the executor (required)")
 	executorsUpdateCmd.MarkFlagRequired("modified-by")
 
+	executorsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	executorsDeleteCmd.Flags().String("deleted-by", "", "User who deleted the executor (required)")
 	executorsDeleteCmd.MarkFlagRequired("deleted-by")
 }
@@ -103,6 +109,7 @@ func runExecutorsList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -136,6 +143,7 @@ func runExecutorsGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -158,6 +166,7 @@ func runExecutorsCreate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -205,6 +214,7 @@ func runExecutorsUpdate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -253,6 +263,7 @@ func runExecutorsDelete(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {

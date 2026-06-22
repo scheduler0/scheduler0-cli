@@ -25,6 +25,8 @@ var asyncTasksGetCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(asyncTasksCmd)
 	asyncTasksCmd.AddCommand(asyncTasksGetCmd)
+
+	asyncTasksGetCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 }
 
 func runAsyncTasksGet(cmd *cobra.Command, args []string) error {
@@ -32,6 +34,7 @@ func runAsyncTasksGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {

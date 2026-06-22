@@ -62,21 +62,27 @@ func init() {
 	projectsCmd.AddCommand(projectsUpdateCmd)
 	projectsCmd.AddCommand(projectsDeleteCmd)
 
+	projectsListCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	projectsListCmd.Flags().Int("limit", 10, "Maximum number of items to return")
 	projectsListCmd.Flags().Int("offset", 0, "Number of items to skip")
 	projectsListCmd.Flags().String("order-by", "date_created", "Field to order by")
 	projectsListCmd.Flags().String("order-direction", "desc", "Order direction (asc/desc)")
 
+	projectsGetCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
+
+	projectsCreateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	projectsCreateCmd.Flags().String("name", "", "Project name (required)")
 	projectsCreateCmd.Flags().String("description", "", "Project description")
 	projectsCreateCmd.Flags().String("created-by", "", "User who created the project (required)")
 	projectsCreateCmd.MarkFlagRequired("name")
 	projectsCreateCmd.MarkFlagRequired("created-by")
 
+	projectsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	projectsUpdateCmd.Flags().String("description", "", "Project description")
 	projectsUpdateCmd.Flags().String("modified-by", "", "User who modified the project (required)")
 	projectsUpdateCmd.MarkFlagRequired("modified-by")
 
+	projectsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	projectsDeleteCmd.Flags().String("deleted-by", "", "User who deleted the project (required)")
 	projectsDeleteCmd.MarkFlagRequired("deleted-by")
 }
@@ -86,6 +92,7 @@ func runProjectsList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -119,6 +126,7 @@ func runProjectsGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -145,6 +153,7 @@ func runProjectsCreate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -176,6 +185,7 @@ func runProjectsUpdate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {
@@ -210,6 +220,7 @@ func runProjectsDelete(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {

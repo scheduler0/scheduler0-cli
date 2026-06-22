@@ -19,6 +19,7 @@ var executionsCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(executionsCmd)
 
+	executionsCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	executionsCmd.Flags().String("start-date", "", "Start date for filtering (RFC3339 format, required)")
 	executionsCmd.Flags().String("end-date", "", "End date for filtering (RFC3339 format, required)")
 	executionsCmd.Flags().Int64("project-id", 0, "Filter by project ID (0 for all)")
@@ -35,6 +36,7 @@ func runExecutionsList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	applyAccountIDFlag(cmd, cfg)
 
 	cl, err := client.NewClient(cfg)
 	if err != nil {

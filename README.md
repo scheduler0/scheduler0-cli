@@ -215,6 +215,8 @@ scheduler0 prompt --prompt "Follow up 2 days after the demo"
 
 **Note**: This endpoint requires credits. Each prompt execution consumes 1 credit. If you have insufficient credits, you'll receive an error.
 
+The `--timezone` flag is optional. When omitted, the AI assumes `UTC`. When set to an IANA name (e.g. `America/New_York`), the AI interprets relative phrases like *"9am tomorrow"* in that timezone and emits timestamps with the matching numeric offset. Invalid timezone strings are rejected by the API with `400 Bad Request`.
+
 ### Executions
 
 ```bash
@@ -231,8 +233,9 @@ scheduler0 executions \
 ### Credentials
 
 Credentials carry **scopes** (`read`, `write`, `execute`) that control which routes
-they can call, and they automatically expire **90 days** after creation. Use
-`credentials rotate` to swap an active credential out without losing its scopes.
+they can call, and they automatically expire **90 days** after creation.
+
+The `apiSecret` is returned **once** at creation time as `plaintextSecret` in the JSON response — store it immediately.
 
 ```bash
 # List credentials (JSON by default; `--output table` shows status, scopes, expiry)
@@ -247,14 +250,6 @@ scheduler0 credentials create \
   --created-by "user-id" \
   --scopes "read,write"
 
-# Rotate a credential: creates a new one with the same scopes, prints the new
-# key/secret, then archives the old one. Use --scopes to change scopes during
-# rotation; --archived-by defaults to --created-by.
-scheduler0 credentials rotate <credential-id> \
-  --created-by "user-id" \
-  [--scopes "read,write"] \
-  [--archived-by "user-id"]
-
 # Update a credential
 scheduler0 credentials update <credential-id> --archived true --modified-by "user-id"
 
@@ -264,6 +259,27 @@ scheduler0 credentials archive <credential-id> --archived-by "user-id"
 # Delete a credential
 scheduler0 credentials delete <credential-id> --deleted-by "user-id"
 ```
+
+#### Replacing an expiring credential
+
+When a credential nears its 90-day expiry, create a replacement, roll out the new `apiKey`/`plaintextSecret` to your clients, then archive the old one:
+
+```bash
+scheduler0 credentials create --created-by "user-id" --scopes "read,write,execute"
+# Update your clients with the new key/secret printed above
+scheduler0 credentials archive <old-credential-id> --archived-by "user-id"
+```
+
+#### Rotating the server's SecretKey (self-hosting only)
+
+If `SecretKey` in your secrets source is compromised and replaced, re-encrypt all stored credentials to match the new key:
+
+```bash
+# Requires basic auth (configure auth_type=basic or use --username/--password)
+scheduler0 credentials rotate-secret
+```
+
+Update `SecretKey` in your secrets source **first**. The command saves the old key as a savepoint, reloads the new key, re-encrypts all credentials in batches, and removes the savepoint on completion. If interrupted, re-run to resume.
 
 ### Async Tasks
 

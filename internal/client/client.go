@@ -45,5 +45,9 @@ func NewClient(cfg *config.Config) (*scheduler0_client.Client, error) {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
+	if cfg.AccountID != "" {
+		scheduler0_client.WithAccountID(cfg.AccountID)(client)
+	}
+
 	return client, nil
 }
