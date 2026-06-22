@@ -32,6 +32,12 @@ jobs:
         go-version: ${{ matrix.go-version }}
         cache-dependency-path: go.sum
     
+    - name: Use latest scheduler0-go-client
+      run: |
+        go mod edit -dropreplace github.com/scheduler0/scheduler0-go-client
+        go get github.com/scheduler0/scheduler0-go-client@latest
+        go mod tidy
+
     - name: Download dependencies
       run: go mod download
     
