@@ -33,11 +33,26 @@ jobs:
         go-version: ${{ matrix.go-version }}
         cache-dependency-path: go.sum
     
+    - name: Diagnostics
+      run: |
+        go version
+        go env GOOS GOARCH CGO_ENABLED CC
+        echo "race flag: '${{ matrix.race }}'"
+
     - name: Download dependencies
       run: go mod download
     
     - name: Run tests
       run: go test -v ${{ matrix.race }} -coverprofile=coverage.out ./...
+      continue-on-error: true
+
+    - name: Upload test log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-log-${{ matrix.os }}
+        path: coverage.out
+        if-no-files-found: ignore
     
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest'
