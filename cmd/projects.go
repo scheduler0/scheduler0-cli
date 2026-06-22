@@ -74,17 +74,17 @@ func init() {
 	projectsCreateCmd.Flags().String("name", "", "Project name (required)")
 	projectsCreateCmd.Flags().String("description", "", "Project description")
 	projectsCreateCmd.Flags().String("created-by", "", "User who created the project (required)")
-	projectsCreateCmd.MarkFlagRequired("name")
-	projectsCreateCmd.MarkFlagRequired("created-by")
+	_ = projectsCreateCmd.MarkFlagRequired("name")
+	_ = projectsCreateCmd.MarkFlagRequired("created-by")
 
 	projectsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	projectsUpdateCmd.Flags().String("description", "", "Project description")
 	projectsUpdateCmd.Flags().String("modified-by", "", "User who modified the project (required)")
-	projectsUpdateCmd.MarkFlagRequired("modified-by")
+	_ = projectsUpdateCmd.MarkFlagRequired("modified-by")
 
 	projectsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	projectsDeleteCmd.Flags().String("deleted-by", "", "User who deleted the project (required)")
-	projectsDeleteCmd.MarkFlagRequired("deleted-by")
+	_ = projectsDeleteCmd.MarkFlagRequired("deleted-by")
 }
 
 func runProjectsList(cmd *cobra.Command, args []string) error {

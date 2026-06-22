@@ -82,8 +82,8 @@ func init() {
 	jobsCreateCmd.Flags().Int("retry-max", 0, "Maximum retries")
 	jobsCreateCmd.Flags().String("status", "active", "Job status (active/inactive)")
 	jobsCreateCmd.Flags().String("created-by", "", "User who created the job (required)")
-	jobsCreateCmd.MarkFlagRequired("project-id")
-	jobsCreateCmd.MarkFlagRequired("created-by")
+	_ = jobsCreateCmd.MarkFlagRequired("project-id")
+	_ = jobsCreateCmd.MarkFlagRequired("created-by")
 
 	jobsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	jobsUpdateCmd.Flags().Int64("project-id", 0, "Project ID")
@@ -97,11 +97,11 @@ func init() {
 	jobsUpdateCmd.Flags().Int("retry-max", 0, "Maximum retries")
 	jobsUpdateCmd.Flags().String("status", "", "Job status (active/inactive)")
 	jobsUpdateCmd.Flags().String("modified-by", "", "User who modified the job (required)")
-	jobsUpdateCmd.MarkFlagRequired("modified-by")
+	_ = jobsUpdateCmd.MarkFlagRequired("modified-by")
 
 	jobsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	jobsDeleteCmd.Flags().String("deleted-by", "", "User who deleted the job (required)")
-	jobsDeleteCmd.MarkFlagRequired("deleted-by")
+	_ = jobsDeleteCmd.MarkFlagRequired("deleted-by")
 }
 
 func runJobsList(cmd *cobra.Command, args []string) error {

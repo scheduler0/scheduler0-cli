@@ -27,8 +27,8 @@ func init() {
 	executionsCmd.Flags().Int("limit", 10, "Maximum number of items to return")
 	executionsCmd.Flags().Int("offset", 0, "Number of items to skip")
 
-	executionsCmd.MarkFlagRequired("start-date")
-	executionsCmd.MarkFlagRequired("end-date")
+	_ = executionsCmd.MarkFlagRequired("start-date")
+	_ = executionsCmd.MarkFlagRequired("end-date")
 }
 
 func runExecutionsList(cmd *cobra.Command, args []string) error {

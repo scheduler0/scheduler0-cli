@@ -114,14 +114,15 @@ func (c *Config) Validate() error {
 	}
 
 	// Validate based on auth type
-	if c.AuthType == "basic" {
+	switch c.AuthType {
+	case "basic":
 		if c.Username == "" {
 			return fmt.Errorf("username is required for basic authentication")
 		}
 		if c.Password == "" {
 			return fmt.Errorf("password is required for basic authentication")
 		}
-	} else if c.AuthType == "api_key" {
+	case "api_key":
 		if c.APIKey == "" {
 			return fmt.Errorf("api_key is required for API key authentication")
 		}
@@ -131,7 +132,7 @@ func (c *Config) Validate() error {
 		if c.AccountID == "" {
 			return fmt.Errorf("account_id is required for API key authentication")
 		}
-	} else {
+	default:
 		return fmt.Errorf("authentication required: provide either username/password (basic) or api_key/api_secret/account_id (api_key)")
 	}
 

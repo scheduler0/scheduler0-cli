@@ -26,7 +26,7 @@ func init() {
 	promptCmd.Flags().StringSlice("recipients", []string{}, "Array of recipient identifiers (max 5 items, each max 36 characters)")
 	promptCmd.Flags().StringSlice("channels", []string{}, "Array of delivery channels (max 5 items, each max 36 characters)")
 	promptCmd.Flags().String("timezone", "", "Optional IANA timezone for scheduling calculations (e.g., UTC, America/New_York). Defaults to UTC when omitted; invalid values are rejected by the API.")
-	promptCmd.MarkFlagRequired("prompt")
+	_ = promptCmd.MarkFlagRequired("prompt")
 }
 
 func runPrompt(cmd *cobra.Command, args []string) error {

@@ -419,7 +419,11 @@ func (e *Executor) scheduleFromCache(ctx context.Context) {
 		e.logger.Printf("scheduleFromCache: failed to query cache: %v", err)
 		return
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			e.logger.Printf("scheduleFromCache: rows.Close: %v", err)
+		}
+	}()
 
 	// Buffer everything we need before scheduling. scheduleJob writes to the DB
 	// (writeExecution), and we must not run a write while these rows are still
@@ -479,7 +483,9 @@ func (e *Executor) scheduleFromCache(ctx context.Context) {
 	if err := rows.Err(); err != nil {
 		e.logger.Printf("scheduleFromCache: row iteration error: %v", err)
 	}
-	rows.Close()
+	if err := rows.Close(); err != nil {
+		e.logger.Printf("scheduleFromCache: rows.Close: %v", err)
+	}
 
 	for _, p := range toSchedule {
 		e.scheduleJob(ctx, p.job, p.lastExecTime, p.version)
@@ -730,7 +736,9 @@ func (e *Executor) report(ctx context.Context) {
 		}
 		batch = append(batch, u)
 	}
-	rows.Close()
+	if err := rows.Close(); err != nil {
+		e.logger.Printf("report: rows.Close: %v", err)
+	}
 
 	if len(batch) == 0 {
 		return

@@ -61,10 +61,10 @@ func init() {
 	accountsTokensCmd.AddCommand(accountsTokensAddCmd)
 
 	accountsCreateCmd.Flags().String("name", "", "Account name (required)")
-	accountsCreateCmd.MarkFlagRequired("name")
+	_ = accountsCreateCmd.MarkFlagRequired("name")
 
 	accountsTokensAddCmd.Flags().Int64("amount", 0, "Number of tokens to add (must be > 0, required)")
-	accountsTokensAddCmd.MarkFlagRequired("amount")
+	_ = accountsTokensAddCmd.MarkFlagRequired("amount")
 }
 
 func runAccountsCreate(cmd *cobra.Command, args []string) error {

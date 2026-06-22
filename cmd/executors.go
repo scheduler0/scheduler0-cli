@@ -81,9 +81,9 @@ func init() {
 	executorsCreateCmd.Flags().String("webhook-secret", "", "Webhook secret")
 	executorsCreateCmd.Flags().String("webhook-method", "POST", "Webhook HTTP method (GET, POST, PUT, DELETE)")
 	executorsCreateCmd.Flags().String("created-by", "", "User who created the executor (required)")
-	executorsCreateCmd.MarkFlagRequired("name")
-	executorsCreateCmd.MarkFlagRequired("type")
-	executorsCreateCmd.MarkFlagRequired("created-by")
+	_ = executorsCreateCmd.MarkFlagRequired("name")
+	_ = executorsCreateCmd.MarkFlagRequired("type")
+	_ = executorsCreateCmd.MarkFlagRequired("created-by")
 
 	executorsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	executorsUpdateCmd.Flags().String("name", "", "Executor name")
@@ -97,11 +97,11 @@ func init() {
 	executorsUpdateCmd.Flags().String("webhook-secret", "", "Webhook secret")
 	executorsUpdateCmd.Flags().String("webhook-method", "", "Webhook HTTP method")
 	executorsUpdateCmd.Flags().String("modified-by", "", "User who modified the executor (required)")
-	executorsUpdateCmd.MarkFlagRequired("modified-by")
+	_ = executorsUpdateCmd.MarkFlagRequired("modified-by")
 
 	executorsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	executorsDeleteCmd.Flags().String("deleted-by", "", "User who deleted the executor (required)")
-	executorsDeleteCmd.MarkFlagRequired("deleted-by")
+	_ = executorsDeleteCmd.MarkFlagRequired("deleted-by")
 }
 
 func runExecutorsList(cmd *cobra.Command, args []string) error {

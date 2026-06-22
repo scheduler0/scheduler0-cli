@@ -167,17 +167,17 @@ func init() {
 	credentialsCreateCmd.Flags().Bool("archived", false, "Whether the credential is archived")
 	credentialsCreateCmd.Flags().String("created-by", "", "User who created the credential (required)")
 	credentialsCreateCmd.Flags().String("scopes", "read,write,execute", "Comma-separated scopes for the credential (read,write,execute)")
-	credentialsCreateCmd.MarkFlagRequired("created-by")
+	_ = credentialsCreateCmd.MarkFlagRequired("created-by")
 
 	credentialsUpdateCmd.Flags().Bool("archived", false, "Whether the credential is archived")
 	credentialsUpdateCmd.Flags().String("modified-by", "", "User who modified the credential (required)")
-	credentialsUpdateCmd.MarkFlagRequired("modified-by")
+	_ = credentialsUpdateCmd.MarkFlagRequired("modified-by")
 
 	credentialsDeleteCmd.Flags().String("deleted-by", "", "User who deleted the credential (required)")
-	credentialsDeleteCmd.MarkFlagRequired("deleted-by")
+	_ = credentialsDeleteCmd.MarkFlagRequired("deleted-by")
 
 	credentialsArchiveCmd.Flags().String("archived-by", "", "User who archived the credential (required)")
-	credentialsArchiveCmd.MarkFlagRequired("archived-by")
+	_ = credentialsArchiveCmd.MarkFlagRequired("archived-by")
 }
 
 func runCredentialsList(cmd *cobra.Command, args []string) error {
@@ -345,7 +345,7 @@ func runCredentialsCreate(cmd *cobra.Command, args []string) error {
 	output, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Println(string(output))
 	if result != nil && result.Data.ExpiresAt != nil {
-		fmt.Fprintf(cmd.OutOrStderr(), "\nCredential expires at: %s. Store the api_secret returned above — it is shown once and cannot be retrieved again.\n", *result.Data.ExpiresAt)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "\nCredential expires at: %s. Store the api_secret returned above — it is shown once and cannot be retrieved again.\n", *result.Data.ExpiresAt)
 	}
 	return nil
 }
@@ -448,15 +448,15 @@ func runCredentialsRotateSecret(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
 
-	fmt.Fprintln(cmd.OutOrStdout(), "Starting credential secret rotation...")
-	fmt.Fprintln(cmd.OutOrStdout(), "Ensure you have already updated SecretKey in your secrets source before proceeding.")
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Starting credential secret rotation...")
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Ensure you have already updated SecretKey in your secrets source before proceeding.")
 
 	result, err := cl.RotateCredentialSecret()
 	if err != nil {
 		return fmt.Errorf("rotation failed: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Rotation complete: %d credential(s) re-encrypted.\n", result.Data.Rotated)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Rotation complete: %d credential(s) re-encrypted.\n", result.Data.Rotated)
 	return nil
 }
 
@@ -476,7 +476,7 @@ func runCredentialsGenerateSecretKey(cmd *cobra.Command, args []string) error {
 	}
 
 	output, _ := json.MarshalIndent(map[string][]string{"secret_keys": keys}, "", "  ")
-	fmt.Fprintln(cmd.OutOrStdout(), string(output))
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(output))
 	return nil
 }
 
