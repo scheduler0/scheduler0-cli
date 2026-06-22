@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/robfig/cron v1.2.0
-	github.com/scheduler0/scheduler0-go-client v1.3.1
+	github.com/scheduler0/scheduler0-go-client v1.6.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
@@ -43,5 +43,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
-
-replace github.com/scheduler0/scheduler0-go-client => ../scheduler0-go-client
