@@ -9,7 +9,11 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
-    
+
+    defaults:
+      run:
+        working-directory: scheduler0-cli
+
     strategy:
       matrix:
         include:
@@ -33,11 +37,9 @@ jobs:
         cache-dependency-path: scheduler0-cli/go.sum
     
     - name: Download dependencies
-      working-directory: scheduler0-cli
       run: go mod download
     
     - name: Run tests
-      working-directory: scheduler0-cli
       run: go test -v -race -coverprofile=coverage.out ./...
     
     - name: Upload coverage to Codecov

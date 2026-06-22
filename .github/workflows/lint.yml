@@ -9,7 +9,11 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    
+
+    defaults:
+      run:
+        working-directory: scheduler0-cli
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -18,7 +22,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.23'
-        cache-dependency-path: go.sum
+        cache-dependency-path: scheduler0-cli/go.sum
     
     # - name: Run golangci-lint
     #   uses: golangci/golangci-lint-action@v6
