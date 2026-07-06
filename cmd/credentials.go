@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -105,45 +103,6 @@ var credentialsArchiveCmd = &cobra.Command{
 	RunE:  runCredentialsArchive,
 }
 
-var credentialsGenerateSecretKeyCmd = &cobra.Command{
-	Use:   "generate-secret-key",
-	Short: "Generate random AES-256 secret keys for use during secret rotation",
-	Long: `Generate one or more cryptographically random 64-character hex strings suitable
-for use as a Scheduler0 SecretKey (AES-256).
-
-This command runs entirely offline — no API call or authentication is required.
-Use it as the first step of the key-rotation workflow:
-
-  1. scheduler0 credentials generate-secret-key   # produce a new key
-  2. Update SecretKey in your secrets source (file, env var, SSM, etc.)
-  3. scheduler0 credentials rotate-secret         # re-encrypt stored credentials
-
-Use --count to generate multiple keys in a single call, which is convenient
-when you want to stage several rotations (A → B → C) without re-running the
-command each time.`,
-	RunE: runCredentialsGenerateSecretKey,
-}
-
-var credentialsRotateSecretCmd = &cobra.Command{
-	Use:   "rotate-secret",
-	Short: "Re-encrypt all active credentials with a new secret key (self-hosting only)",
-	Long: `Re-encrypt all active, non-expired credentials from the old SecretKey to a new one.
-
-This command is for operators who have rotated the server's SecretKey in their
-secrets source (file, SSM, AWS Secrets Manager, or env var) and need to update
-the encrypted api_secret stored for every active credential.
-
-Steps:
-  1. Update SecretKey in your secrets source.
-  2. Run this command — it calls POST /api/v1/credentials/rotate-secret on the server.
-  3. The server saves the old key as a savepoint, reloads the new key, and re-encrypts
-     credentials in batches. The savepoint is deleted on completion.
-  4. If interrupted, re-run this command — the server will resume from the savepoint.
-
-Requires Basic Authentication (--username / --password or saved config with auth_type=basic).`,
-	RunE: runCredentialsRotateSecret,
-}
-
 func init() {
 	rootCmd.AddCommand(credentialsCmd)
 	credentialsCmd.AddCommand(credentialsListCmd)
@@ -152,10 +111,6 @@ func init() {
 	credentialsCmd.AddCommand(credentialsUpdateCmd)
 	credentialsCmd.AddCommand(credentialsDeleteCmd)
 	credentialsCmd.AddCommand(credentialsArchiveCmd)
-	credentialsCmd.AddCommand(credentialsRotateSecretCmd)
-	credentialsCmd.AddCommand(credentialsGenerateSecretKeyCmd)
-
-	credentialsGenerateSecretKeyCmd.Flags().Int("count", 1, "Number of secret keys to generate")
 
 	credentialsListCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	credentialsListCmd.Flags().Int("limit", 10, "Maximum number of items to return")
@@ -429,54 +384,3 @@ func runCredentialsArchive(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Credential %s archived successfully\n", credentialID)
 	return nil
 }
-
-// runCredentialsRotateSecret calls POST /credentials/rotate-secret on the server to
-// re-encrypt all active credentials with the new SecretKey. Requires basic auth.
-func runCredentialsRotateSecret(cmd *cobra.Command, args []string) error {
-	cfg, err := GetClientConfig()
-	if err != nil {
-		return err
-	}
-
-	if cfg.Username == "" || cfg.Password == "" {
-		return fmt.Errorf("rotate-secret requires basic authentication: set username and password in your config or use --username and --password flags")
-	}
-	cfg.AuthType = "basic"
-
-	cl, err := client.NewClient(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create client: %w", err)
-	}
-
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Starting credential secret rotation...")
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Ensure you have already updated SecretKey in your secrets source before proceeding.")
-
-	result, err := cl.RotateCredentialSecret()
-	if err != nil {
-		return fmt.Errorf("rotation failed: %w", err)
-	}
-
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Rotation complete: %d credential(s) re-encrypted.\n", result.Data.Rotated)
-	return nil
-}
-
-func runCredentialsGenerateSecretKey(cmd *cobra.Command, args []string) error {
-	count, _ := cmd.Flags().GetInt("count")
-	if count < 1 {
-		return fmt.Errorf("--count must be at least 1")
-	}
-
-	keys := make([]string, count)
-	for i := range keys {
-		b := make([]byte, 32)
-		if _, err := rand.Read(b); err != nil {
-			return fmt.Errorf("failed to generate random bytes: %w", err)
-		}
-		keys[i] = hex.EncodeToString(b)
-	}
-
-	output, _ := json.MarshalIndent(map[string][]string{"secret_keys": keys}, "", "  ")
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(output))
-	return nil
-}
-

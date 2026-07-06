@@ -272,14 +272,20 @@ scheduler0 credentials archive <old-credential-id> --archived-by "user-id"
 
 #### Rotating the server's SecretKey (self-hosting only)
 
-If `SecretKey` in your secrets source is compromised and replaced, re-encrypt all stored credentials to match the new key:
+If `SecretKey` in your secrets source is compromised and replaced, re-encrypt all stored secrets (credential api secrets, executor cloud credentials, and AI provider keys) to match the new key:
 
 ```bash
-# Requires basic auth (configure auth_type=basic or use --username/--password)
-scheduler0 credentials rotate-secret
+# 1. Generate a new key (offline)
+scheduler0 accounts generate-secret-key
+
+# 2. Update SecretKey in your secrets source and reload/restart the server
+
+# 3. Re-encrypt stored secrets, passing the previous key.
+#    Requires basic auth (configure auth_type=basic or use --username/--password)
+scheduler0 accounts rotate-secret --old-secret-key <OLD_HEX_KEY>
 ```
 
-Update `SecretKey` in your secrets source **first**. The command saves the old key as a savepoint, reloads the new key, re-encrypts all credentials in batches, and removes the savepoint on completion. If interrupted, re-run to resume.
+The server decrypts every stored secret with the old key and re-encrypts it with the currently-loaded new key. Credentials keep working across rotation — the `api_secret` is verified by decrypting the stored value, and the `api_key` identifier is unchanged. The operation is idempotent: rows already on the new key are skipped, so if interrupted you can simply re-run it.
 
 ### Async Tasks
 
