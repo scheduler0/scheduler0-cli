@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -17,6 +18,15 @@ var promptCmd = &cobra.Command{
 	RunE:  runPrompt,
 }
 
+// classifyCmd is a subcommand that runs only the intent guardrail — no model execution
+// and no credits are consumed.
+var classifyCmd = &cobra.Command{
+	Use:   "classify",
+	Short: "Classify a prompt with the intent guardrail (no AI execution, no credits consumed)",
+	Long:  "Run only the edge intent classifier against a prompt and print the full classification output. No AI model is invoked and no credits are consumed.",
+	RunE:  runClassify,
+}
+
 func init() {
 	rootCmd.AddCommand(promptCmd)
 
@@ -27,6 +37,11 @@ func init() {
 	promptCmd.Flags().StringSlice("channels", []string{}, "Array of delivery channels (max 5 items, each max 36 characters)")
 	promptCmd.Flags().String("timezone", "", "Optional IANA timezone for scheduling calculations (e.g., UTC, America/New_York). Defaults to UTC when omitted; invalid values are rejected by the API.")
 	_ = promptCmd.MarkFlagRequired("prompt")
+
+	// classify subcommand
+	promptCmd.AddCommand(classifyCmd)
+	classifyCmd.Flags().String("prompt", "", "Natural language prompt to classify (required)")
+	_ = classifyCmd.MarkFlagRequired("prompt")
 }
 
 func runPrompt(cmd *cobra.Command, args []string) error {
@@ -47,15 +62,12 @@ func runPrompt(cmd *cobra.Command, args []string) error {
 	channels, _ := cmd.Flags().GetStringSlice("channels")
 	timezone, _ := cmd.Flags().GetString("timezone")
 
-	// Validate prompt length
 	if len(strings.TrimSpace(prompt)) == 0 {
 		return fmt.Errorf("prompt cannot be empty")
 	}
 	if len(prompt) > 160 {
 		return fmt.Errorf("prompt must be 160 characters or less (got %d)", len(prompt))
 	}
-
-	// Validate array lengths
 	if len(purposes) > 5 {
 		return fmt.Errorf("purposes must have 5 or fewer items (got %d)", len(purposes))
 	}
@@ -69,7 +81,6 @@ func runPrompt(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("channels must have 5 or fewer items (got %d)", len(channels))
 	}
 
-	// Validate individual item lengths (max 36 characters)
 	maxLength := 36
 	for i, purpose := range purposes {
 		if len(purpose) > maxLength {
@@ -95,7 +106,6 @@ func runPrompt(cmd *cobra.Command, args []string) error {
 	request := &scheduler0_client.PromptJobRequest{
 		Prompt: strings.TrimSpace(prompt),
 	}
-
 	if len(purposes) > 0 {
 		request.Purposes = purposes
 	}
@@ -114,6 +124,17 @@ func runPrompt(cmd *cobra.Command, args []string) error {
 
 	result, err := cl.CreateJobFromPrompt(request)
 	if err != nil {
+		// When the intent guardrail rejects the prompt, surface the structured
+		// classification so the user can see why and how to rephrase.
+		var skipped *scheduler0_client.PromptSkippedError
+		if errors.As(err, &skipped) {
+			fmt.Printf("Prompt %s: %s\n", skipped.Classification.Decision, skipped.Classification.Reason)
+			if skipped.Classification != nil {
+				out, _ := json.MarshalIndent(skipped.Classification, "", "  ")
+				fmt.Println(string(out))
+			}
+			return fmt.Errorf("prompt not accepted by intent guardrail (decision=%s)", skipped.Classification.Decision)
+		}
 		return fmt.Errorf("failed to create job from prompt: %w", err)
 	}
 
@@ -123,3 +144,30 @@ func runPrompt(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func runClassify(cmd *cobra.Command, args []string) error {
+	cfg, err := GetClientConfig()
+	if err != nil {
+		return err
+	}
+
+	cl, err := client.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	prompt, _ := cmd.Flags().GetString("prompt")
+	if strings.TrimSpace(prompt) == "" {
+		return fmt.Errorf("prompt cannot be empty")
+	}
+
+	classification, err := cl.ClassifyPrompt(&scheduler0_client.ClassifyPromptRequest{
+		Prompt: strings.TrimSpace(prompt),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to classify prompt: %w", err)
+	}
+
+	output, _ := json.MarshalIndent(classification, "", "  ")
+	fmt.Println(string(output))
+	return nil
+}
