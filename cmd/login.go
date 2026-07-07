@@ -119,7 +119,7 @@ func runLoginLoopback(cmd *cobra.Command, appURL, apiURL string, existing *confi
 	if err != nil {
 		return fmt.Errorf("failed to start local callback server: %w", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	port := listener.Addr().(*net.TCPAddr).Port
 	redirectURI := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
@@ -135,9 +135,9 @@ func runLoginLoopback(cmd *cobra.Command, appURL, apiURL string, existing *confi
 
 	authorizeURL := buildAuthorizeURL(appURL, redirectURI, state, challenge)
 
-	fmt.Fprintln(out, "Opening your browser to sign in...")
+	_, _ = fmt.Fprintln(out, "Opening your browser to sign in...")
 	if err := openBrowser(authorizeURL); err != nil {
-		fmt.Fprintf(out, "\nCould not open a browser automatically. Visit this URL to authorize the CLI:\n\n%s\n\n", authorizeURL)
+		_, _ = fmt.Fprintf(out, "\nCould not open a browser automatically. Visit this URL to authorize the CLI:\n\n%s\n\n", authorizeURL)
 	}
 
 	// Wait for the callback (or timeout / cancellation).
@@ -185,11 +185,11 @@ func saveSessionAndReport(out io.Writer, existing *config.Config, appURL, apiURL
 		return fmt.Errorf("failed to save credentials: %w", err)
 	}
 
-	fmt.Fprintf(out, "✓ Signed in. Account %s.", cfg.AccountID)
+	_, _ = fmt.Fprintf(out, "✓ Signed in. Account %s.", cfg.AccountID)
 	if expiry, ok := cfg.SessionExpiry(); ok {
-		fmt.Fprintf(out, " Session valid until %s.", expiry.Local().Format(time.RFC1123))
+		_, _ = fmt.Fprintf(out, " Session valid until %s.", expiry.Local().Format(time.RFC1123))
 	}
-	fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out)
 	return nil
 }
 
@@ -261,7 +261,7 @@ func postToken(ctx context.Context, appURL string, body map[string]string) (tok 
 	if err != nil {
 		return nil, "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		var e struct {
@@ -305,7 +305,7 @@ func requestDeviceCode(ctx context.Context, appURL string) (*deviceCodeResponse,
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		var e struct {
@@ -342,13 +342,13 @@ func runLoginDevice(cmd *cobra.Command, appURL, apiURL string, existing *config.
 		return fmt.Errorf("failed to request a device code: %w", err)
 	}
 
-	fmt.Fprintln(out, "This looks like a headless or remote session, so let's sign in with a device code.")
-	fmt.Fprintf(out, "\nFirst, copy your one-time code:\n\n    %s\n\n", dc.UserCode)
-	fmt.Fprintf(out, "Then open this URL in a browser on any device and enter the code:\n\n    %s\n\n", dc.VerificationURI)
+	_, _ = fmt.Fprintln(out, "This looks like a headless or remote session, so let's sign in with a device code.")
+	_, _ = fmt.Fprintf(out, "\nFirst, copy your one-time code:\n\n    %s\n\n", dc.UserCode)
+	_, _ = fmt.Fprintf(out, "Then open this URL in a browser on any device and enter the code:\n\n    %s\n\n", dc.VerificationURI)
 	if dc.VerificationURIComplete != "" {
-		fmt.Fprintf(out, "Or open this link to skip typing the code:\n\n    %s\n\n", dc.VerificationURIComplete)
+		_, _ = fmt.Fprintf(out, "Or open this link to skip typing the code:\n\n    %s\n\n", dc.VerificationURIComplete)
 	}
-	fmt.Fprintln(out, "Waiting for approval...")
+	_, _ = fmt.Fprintln(out, "Waiting for approval...")
 
 	interval := time.Duration(dc.Interval) * time.Second
 	if interval < minDevicePollInterval {
@@ -439,7 +439,7 @@ func writeBrowserMessage(w http.ResponseWriter, success bool, message string) {
 		title = "Sign-in problem"
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Scheduler0 CLI</title>
+	_, _ = fmt.Fprintf(w, `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Scheduler0 CLI</title>
 <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}.card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:32px;max-width:420px;text-align:center}h1{font-size:20px;margin:0 0 8px}p{color:#94a3b8;line-height:1.5;margin:0}</style>
 </head><body><div class="card"><h1>%s</h1><p>%s</p></div></body></html>`, title, message)
 }

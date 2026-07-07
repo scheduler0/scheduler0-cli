@@ -27,12 +27,12 @@ func runLogout(cmd *cobra.Command, args []string) error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		// No config at all means there's nothing to clear.
-		fmt.Fprintln(out, "You are not signed in.")
+		_, _ = fmt.Fprintln(out, "You are not signed in.")
 		return nil
 	}
 
 	if cfg.APIKey == "" && cfg.APISecret == "" {
-		fmt.Fprintln(out, "You are not signed in.")
+		_, _ = fmt.Fprintln(out, "You are not signed in.")
 		return nil
 	}
 
@@ -41,6 +41,6 @@ func runLogout(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to clear stored credentials: %w", err)
 	}
 
-	fmt.Fprintln(out, "✓ Signed out.")
+	_, _ = fmt.Fprintln(out, "✓ Signed out.")
 	return nil
 }
