@@ -29,8 +29,8 @@ github.com/robfig/cron v1.2.0/go.mod h1:JGuDeoQd7Z6yL4zQhZ3OPEVHB7fL6Ka6skscFHfm
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/scheduler0/scheduler0-go-client v1.7.0 h1:hH9kBC1luIjSg5E+ZrmYpUEgYw4dM7uA9KVQgTQUgro=
-github.com/scheduler0/scheduler0-go-client v1.7.0/go.mod h1:Cx7RObAnyhrb7hhcGUSU1k81yn8Ptr5lNxZ9ltWZuso=
+github.com/scheduler0/scheduler0-go-client v1.7.1-0.20260707065842-356bdc6caded h1:wwXqgzW9CGjhV6OTbSU06yCga+BmBhLZRF9AFM0ZGs8=
+github.com/scheduler0/scheduler0-go-client v1.7.1-0.20260707065842-356bdc6caded/go.mod h1:Cx7RObAnyhrb7hhcGUSU1k81yn8Ptr5lNxZ9ltWZuso=
 github.com/spf13/cobra v1.8.1 h1:e5/vxKd/rZsfSJMUX1agtjeTDf+qv1/JdBF8gg5k9ZM=
 github.com/spf13/cobra v1.8.1/go.mod h1:wHxEcudfqmLYa8iTfL+OuZPbBZkmvliBWKIezN3kD9Y=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
