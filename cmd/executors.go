@@ -80,10 +80,8 @@ func init() {
 	executorsCreateCmd.Flags().String("webhook-url", "", "Webhook URL")
 	executorsCreateCmd.Flags().String("webhook-secret", "", "Webhook secret")
 	executorsCreateCmd.Flags().String("webhook-method", "POST", "Webhook HTTP method (GET, POST, PUT, DELETE)")
-	executorsCreateCmd.Flags().String("created-by", "", "User who created the executor (required)")
 	_ = executorsCreateCmd.MarkFlagRequired("name")
 	_ = executorsCreateCmd.MarkFlagRequired("type")
-	_ = executorsCreateCmd.MarkFlagRequired("created-by")
 
 	executorsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	executorsUpdateCmd.Flags().String("name", "", "Executor name")
@@ -96,12 +94,8 @@ func init() {
 	executorsUpdateCmd.Flags().String("webhook-url", "", "Webhook URL")
 	executorsUpdateCmd.Flags().String("webhook-secret", "", "Webhook secret")
 	executorsUpdateCmd.Flags().String("webhook-method", "", "Webhook HTTP method")
-	executorsUpdateCmd.Flags().String("modified-by", "", "User who modified the executor (required)")
-	_ = executorsUpdateCmd.MarkFlagRequired("modified-by")
 
 	executorsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
-	executorsDeleteCmd.Flags().String("deleted-by", "", "User who deleted the executor (required)")
-	_ = executorsDeleteCmd.MarkFlagRequired("deleted-by")
 }
 
 func runExecutorsList(cmd *cobra.Command, args []string) error {
@@ -183,7 +177,10 @@ func runExecutorsCreate(cmd *cobra.Command, args []string) error {
 	webhookURL, _ := cmd.Flags().GetString("webhook-url")
 	webhookSecret, _ := cmd.Flags().GetString("webhook-secret")
 	webhookMethod, _ := cmd.Flags().GetString("webhook-method")
-	createdBy, _ := cmd.Flags().GetString("created-by")
+	createdBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	executor := &scheduler0_client.ExecutorRequestBody{
 		Name:             name,
@@ -232,7 +229,10 @@ func runExecutorsUpdate(cmd *cobra.Command, args []string) error {
 	webhookURL, _ := cmd.Flags().GetString("webhook-url")
 	webhookSecret, _ := cmd.Flags().GetString("webhook-secret")
 	webhookMethod, _ := cmd.Flags().GetString("webhook-method")
-	modifiedBy, _ := cmd.Flags().GetString("modified-by")
+	modifiedBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	update := &scheduler0_client.ExecutorUpdateRequestBody{
 		Name:             name,
@@ -271,7 +271,10 @@ func runExecutorsDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	executorID := args[0]
-	deletedBy, _ := cmd.Flags().GetString("deleted-by")
+	deletedBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	deleteReq := &scheduler0_client.ExecutorDeleteRequestBody{
 		DeletedBy: deletedBy,

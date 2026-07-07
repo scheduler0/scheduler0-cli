@@ -15,7 +15,6 @@ func TestNewClient(t *testing.T) {
 		APIKey:    "test-key",
 		APISecret: "test-secret",
 		AccountID: "123",
-		AuthType:  "api_key",
 	}
 
 	cl, err := NewClient(cfg)
@@ -39,7 +38,6 @@ func TestNewClient_InvalidURL(t *testing.T) {
 		APIKey:    "test-key",
 		APISecret: "test-secret",
 		AccountID: "123",
-		AuthType:  "api_key",
 	}
 
 	cl, err := NewClient(cfg)
@@ -49,34 +47,11 @@ func TestNewClient_InvalidURL(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestNewClient_BasicAuth(t *testing.T) {
-	cfg := &config.Config{
-		BaseURL:  "http://localhost:7070",
-		Username: "admin",
-		Password: "secret",
-		AuthType: "basic",
-	}
-
-	cl, err := NewClient(cfg)
-	require.NoError(t, err)
-	require.NotNil(t, cl)
-
-	// Verify client configuration
-	assert.Equal(t, "admin", cl.Username)
-	assert.Equal(t, "secret", cl.Password)
-	assert.Equal(t, "v1", cl.Version)
-
-	// Verify base URL
-	expectedURL, _ := url.Parse("http://localhost:7070")
-	assert.Equal(t, expectedURL.String(), cl.BaseURL.String())
-}
-
-func TestNewClient_BasicAuthWithAccountIDOverride(t *testing.T) {
+func TestNewClient_PropagatesAccountID(t *testing.T) {
 	cfg := &config.Config{
 		BaseURL:   "http://localhost:7070",
-		Username:  "admin",
-		Password:  "secret",
-		AuthType:  "basic",
+		APIKey:    "k",
+		APISecret: "s",
 		AccountID: "42",
 	}
 
@@ -84,7 +59,5 @@ func TestNewClient_BasicAuthWithAccountIDOverride(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cl)
 
-	// AccountID should be propagated even for basic-auth clients so that the
-	// X-Account-ID header is sent when --account-id is provided.
 	assert.Equal(t, "42", cl.AccountID)
 }

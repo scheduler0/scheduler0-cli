@@ -9,11 +9,7 @@ import (
 
 var (
 	baseURL   string
-	apiKey    string
-	apiSecret string
 	accountID string
-	username  string
-	password  string
 )
 
 var (
@@ -24,8 +20,8 @@ var rootCmd = &cobra.Command{
 	Use:   "scheduler0",
 	Short: "Scheduler0 CLI - A command-line interface for Scheduler0",
 	Long: `Scheduler0 CLI is a command-line tool for interacting with the Scheduler0 API.
-	
-Use 'scheduler0 init' to configure your credentials before using other commands.`,
+
+Run 'scheduler0 login' to sign in before using other commands.`,
 	Version: version,
 }
 
@@ -48,42 +44,61 @@ func initConfig() {
 	// Config is loaded per-command as needed
 }
 
-// GetClientConfig returns the client configuration, loading from saved config or flags
+// GetClientConfig resolves the session credential and applies per-command flag
+// overrides. It prefers SCHEDULER0_* environment variables (see
+// config.LoadConfigFromEnv), for CI environments where an interactive
+// `scheduler0 login` isn't possible, and otherwise falls back to the session
+// saved by `scheduler0 login`. It errors when neither yields a valid session.
 func GetClientConfig() (*config.Config, error) {
-	// If flags are provided, use them
-	// Check for basic auth flags first
-	if baseURL != "" && username != "" && password != "" {
-		return &config.Config{
-			BaseURL:  baseURL,
-			Username: username,
-			Password: password,
-			AuthType: "basic",
-		}, nil
-	}
-
-	// Check for API key auth flags
-	if baseURL != "" && apiKey != "" && apiSecret != "" && accountID != "" {
-		return &config.Config{
-			BaseURL:   baseURL,
-			APIKey:    apiKey,
-			APISecret: apiSecret,
-			AccountID: accountID,
-			AuthType:  "api_key",
-		}, nil
-	}
-
-	// Otherwise, load from saved config
-	cfg, err := config.LoadConfig()
+	cfg, err := resolveSessionConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w\nRun 'scheduler0 init' to configure credentials", err)
+		return nil, err
 	}
 
-	// Allow the --account-id flag to override the configured account for a single command
+	// Allow single-command overrides of the endpoint/account.
+	if baseURL != "" {
+		cfg.BaseURL = baseURL
+	}
 	if accountID != "" {
 		cfg.AccountID = accountID
 	}
 
+	if !cfg.IsSessionValid() {
+		if cfg.EnvSourced {
+			return nil, fmt.Errorf("%s, %s, and %s must all be set", config.EnvAPIKey, config.EnvAPISecret, config.EnvAccountID)
+		}
+		return nil, fmt.Errorf("session expired or missing: run 'scheduler0 login'")
+	}
+
 	return cfg, nil
+}
+
+// resolveSessionConfig prefers a CI session from SCHEDULER0_* environment
+// variables over the on-disk session, so that setting them always wins
+// (matching how the --base-url/--account-id flags override both further up).
+func resolveSessionConfig() (*config.Config, error) {
+	if envCfg, ok := config.LoadConfigFromEnv(); ok {
+		return envCfg, nil
+	}
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("not signed in: run 'scheduler0 login', or set %s/%s/%s for CI", config.EnvAPIKey, config.EnvAPISecret, config.EnvAccountID)
+	}
+	return cfg, nil
+}
+
+// actor returns the identity recorded for created_by/modified_by/deleted_by/
+// archived_by fields: the Clerk user id captured at login, or SCHEDULER0_ACTOR
+// for an environment-authenticated (CI) session.
+func actor(cfg *config.Config) (string, error) {
+	if cfg == nil || cfg.ClerkUserID == "" {
+		if cfg != nil && cfg.EnvSourced {
+			return "", fmt.Errorf("%s must be set to perform this action", config.EnvActor)
+		}
+		return "", fmt.Errorf("no signed-in user found: run 'scheduler0 login'")
+	}
+	return cfg.ClerkUserID, nil
 }
 
 // applyAccountIDFlag reads the local --account-id flag on cmd and patches cfg if
@@ -98,9 +113,5 @@ func applyAccountIDFlag(cmd *cobra.Command, cfg *config.Config) {
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&baseURL, "base-url", "", "Scheduler0 API base URL (overrides config)")
-	rootCmd.PersistentFlags().StringVar(&apiKey, "api-key", "", "API key (overrides config, for API key auth)")
-	rootCmd.PersistentFlags().StringVar(&apiSecret, "api-secret", "", "API secret (overrides config, for API key auth)")
-	rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID (overrides config, for API key auth)")
-	rootCmd.PersistentFlags().StringVar(&username, "username", "", "Username (overrides config, for basic auth - self-hosted)")
-	rootCmd.PersistentFlags().StringVar(&password, "password", "", "Password (overrides config, for basic auth - self-hosted)")
+	rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID (overrides the signed-in account for this command)")
 }

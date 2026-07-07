@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	scheduler0_client "github.com/scheduler0/scheduler0-go-client"
+	"github.com/scheduler0/scheduler0-cli/internal/client"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +41,7 @@ func runBackupStart(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cl, err := scheduler0_client.NewBasicAuthClient(cfg.BaseURL, "v1", cfg.Username, cfg.Password)
+	cl, err := client.NewClient(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
@@ -64,7 +64,7 @@ func runRestore(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cl, err := scheduler0_client.NewBasicAuthClient(cfg.BaseURL, "v1", cfg.Username, cfg.Password)
+	cl, err := client.NewClient(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}

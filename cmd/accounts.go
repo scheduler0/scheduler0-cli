@@ -226,11 +226,8 @@ func runAccountsRotateSecret(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if cfg.Username == "" || cfg.Password == "" {
-		return fmt.Errorf("rotate-secret requires basic authentication: set username and password in your config or use --username and --password flags")
-	}
-	cfg.AuthType = "basic"
-
+	// rotate-secret is an operator (admin) operation; the signed-in credential must
+	// carry the admin scope, which the API enforces.
 	oldSecretKey, _ := cmd.Flags().GetString("old-secret-key")
 	if strings.TrimSpace(oldSecretKey) == "" {
 		return fmt.Errorf("--old-secret-key is required")

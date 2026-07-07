@@ -5,10 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// futureExpiry / pastExpiry are RFC3339 timestamps used to exercise session validity.
+func futureExpiry() string { return time.Now().Add(time.Hour).Format(time.RFC3339) }
+func pastExpiry() string   { return time.Now().Add(-time.Hour).Format(time.RFC3339) }
 
 func TestGetConfigPath(t *testing.T) {
 	path, err := GetConfigPath()
@@ -28,11 +33,13 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	configPath := filepath.Join(configDir, configFileName)
 
 	cfg := &Config{
-		BaseURL:   "https://api.test.com",
-		APIKey:    "test-key",
-		APISecret: "test-secret",
-		AccountID: "123",
-		AuthType:  "api_key",
+		BaseURL:     "https://api.test.com",
+		AppURL:      "https://app.test.com",
+		APIKey:      "test-key",
+		APISecret:   "test-secret",
+		AccountID:   "123",
+		ClerkUserID: "user_abc",
+		ExpiresAt:   futureExpiry(),
 	}
 
 	// Create directory
@@ -74,23 +81,13 @@ func TestConfig_Validate(t *testing.T) {
 		errMsg  string
 	}{
 		{
-			name: "valid config - API key",
+			name: "valid session",
 			config: &Config{
 				BaseURL:   "https://api.test.com",
 				APIKey:    "test-key",
 				APISecret: "test-secret",
 				AccountID: "123",
-				AuthType:  "api_key",
-			},
-			wantErr: false,
-		},
-		{
-			name: "valid config - basic auth",
-			config: &Config{
-				BaseURL:  "http://localhost:7070",
-				Username: "admin",
-				Password: "secret",
-				AuthType: "basic",
+				ExpiresAt: futureExpiry(),
 			},
 			wantErr: false,
 		},
@@ -100,70 +97,30 @@ func TestConfig_Validate(t *testing.T) {
 				APIKey:    "test-key",
 				APISecret: "test-secret",
 				AccountID: "123",
+				ExpiresAt: futureExpiry(),
 			},
 			wantErr: true,
 			errMsg:  "base_url is required",
 		},
 		{
-			name: "missing api_key",
-			config: &Config{
-				BaseURL:   "https://api.test.com",
-				APISecret: "test-secret",
-				AccountID: "123",
-				AuthType:  "api_key",
-			},
-			wantErr: true,
-			errMsg:  "api_key is required",
-		},
-		{
-			name: "missing api_secret",
-			config: &Config{
-				BaseURL:   "https://api.test.com",
-				APIKey:    "test-key",
-				AccountID: "123",
-				AuthType:  "api_key",
-			},
-			wantErr: true,
-			errMsg:  "api_secret is required",
-		},
-		{
-			name: "missing account_id",
-			config: &Config{
-				BaseURL:   "https://api.test.com",
-				APIKey:    "test-key",
-				APISecret: "test-secret",
-				AuthType:  "api_key",
-			},
-			wantErr: true,
-			errMsg:  "account_id is required",
-		},
-		{
-			name: "basic auth - missing username",
-			config: &Config{
-				BaseURL:  "http://localhost:7070",
-				Password: "secret",
-				AuthType: "basic",
-			},
-			wantErr: true,
-			errMsg:  "username is required",
-		},
-		{
-			name: "basic auth - missing password",
-			config: &Config{
-				BaseURL:  "http://localhost:7070",
-				Username: "admin",
-				AuthType: "basic",
-			},
-			wantErr: true,
-			errMsg:  "password is required",
-		},
-		{
-			name: "no authentication provided",
+			name: "missing credential",
 			config: &Config{
 				BaseURL: "https://api.test.com",
 			},
 			wantErr: true,
-			errMsg:  "authentication required",
+			errMsg:  "not signed in",
+		},
+		{
+			name: "expired session",
+			config: &Config{
+				BaseURL:   "https://api.test.com",
+				APIKey:    "test-key",
+				APISecret: "test-secret",
+				AccountID: "123",
+				ExpiresAt: pastExpiry(),
+			},
+			wantErr: true,
+			errMsg:  "session expired",
 		},
 	}
 
@@ -178,6 +135,114 @@ func TestConfig_Validate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConfig_IsSessionValid(t *testing.T) {
+	valid := &Config{APIKey: "k", APISecret: "s", AccountID: "1", ExpiresAt: futureExpiry()}
+	assert.True(t, valid.IsSessionValid())
+
+	expired := &Config{APIKey: "k", APISecret: "s", AccountID: "1", ExpiresAt: pastExpiry()}
+	assert.False(t, expired.IsSessionValid())
+
+	noExpiry := &Config{APIKey: "k", APISecret: "s", AccountID: "1"}
+	assert.False(t, noExpiry.IsSessionValid(), "a session without an expiry should be treated as invalid")
+
+	noCred := &Config{ExpiresAt: futureExpiry()}
+	assert.False(t, noCred.IsSessionValid())
+
+	// An env-sourced (CI) session without an explicit expiry is valid — the
+	// server is left to enforce actual expiry — but still expired if one was
+	// given and has passed.
+	envNoExpiry := &Config{APIKey: "k", APISecret: "s", AccountID: "1", EnvSourced: true}
+	assert.True(t, envNoExpiry.IsSessionValid())
+
+	envExpired := &Config{APIKey: "k", APISecret: "s", AccountID: "1", ExpiresAt: pastExpiry(), EnvSourced: true}
+	assert.False(t, envExpired.IsSessionValid())
+}
+
+func TestLoadConfigFromEnv(t *testing.T) {
+	clearEnv := func(t *testing.T) {
+		t.Helper()
+		for _, name := range []string{EnvBaseURL, EnvAPIKey, EnvAPISecret, EnvAccountID, EnvActor, EnvExpiresAt} {
+			t.Setenv(name, "")
+		}
+	}
+
+	t.Run("nothing set", func(t *testing.T) {
+		clearEnv(t)
+		cfg, ok := LoadConfigFromEnv()
+		assert.False(t, ok)
+		assert.Nil(t, cfg)
+	})
+
+	t.Run("full session", func(t *testing.T) {
+		clearEnv(t)
+		t.Setenv(EnvAPIKey, "k")
+		t.Setenv(EnvAPISecret, "s")
+		t.Setenv(EnvAccountID, "42")
+		t.Setenv(EnvActor, "github-actions")
+		t.Setenv(EnvBaseURL, "https://api.custom.com")
+
+		cfg, ok := LoadConfigFromEnv()
+		require.True(t, ok)
+		assert.Equal(t, "k", cfg.APIKey)
+		assert.Equal(t, "s", cfg.APISecret)
+		assert.Equal(t, "42", cfg.AccountID)
+		assert.Equal(t, "github-actions", cfg.ClerkUserID)
+		assert.Equal(t, "https://api.custom.com", cfg.BaseURL)
+		assert.True(t, cfg.EnvSourced)
+		assert.True(t, cfg.IsSessionValid())
+	})
+
+	t.Run("defaults base url when unset", func(t *testing.T) {
+		clearEnv(t)
+		t.Setenv(EnvAPIKey, "k")
+		t.Setenv(EnvAPISecret, "s")
+		t.Setenv(EnvAccountID, "42")
+
+		cfg, ok := LoadConfigFromEnv()
+		require.True(t, ok)
+		assert.Equal(t, DefaultBaseURL, cfg.BaseURL)
+	})
+
+	t.Run("partial set still reports ok, but fails validity", func(t *testing.T) {
+		clearEnv(t)
+		t.Setenv(EnvAPIKey, "k")
+
+		cfg, ok := LoadConfigFromEnv()
+		require.True(t, ok)
+		assert.False(t, cfg.IsSessionValid())
+	})
+}
+
+func TestConfig_ClearSession(t *testing.T) {
+	cfg := &Config{
+		BaseURL:       "https://api.test.com",
+		APIKey:        "k",
+		APISecret:     "s",
+		AccountID:     "1",
+		ClerkUserID:   "user_x",
+		ExpiresAt:     futureExpiry(),
+		Scopes:        []string{"read"},
+		LocalExecutor: &LocalExecutorEntry{ID: "exec-1"},
+	}
+	cfg.ClearSession()
+
+	assert.Empty(t, cfg.APIKey)
+	assert.Empty(t, cfg.APISecret)
+	assert.Empty(t, cfg.AccountID)
+	assert.Empty(t, cfg.ClerkUserID)
+	assert.Empty(t, cfg.ExpiresAt)
+	assert.Nil(t, cfg.Scopes)
+	// Endpoints and executor registration are preserved.
+	assert.Equal(t, "https://api.test.com", cfg.BaseURL)
+	require.NotNil(t, cfg.LocalExecutor)
+	assert.Equal(t, "exec-1", cfg.LocalExecutor.ID)
+}
+
+func TestConfig_AppBaseURL(t *testing.T) {
+	assert.Equal(t, DefaultAppURL, (&Config{}).AppBaseURL())
+	assert.Equal(t, "https://app.custom.com", (&Config{AppURL: "https://app.custom.com"}).AppBaseURL())
 }
 
 func TestSaveConfig_CreatesDirectory(t *testing.T) {

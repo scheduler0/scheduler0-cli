@@ -73,18 +73,12 @@ func init() {
 	projectsCreateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	projectsCreateCmd.Flags().String("name", "", "Project name (required)")
 	projectsCreateCmd.Flags().String("description", "", "Project description")
-	projectsCreateCmd.Flags().String("created-by", "", "User who created the project (required)")
 	_ = projectsCreateCmd.MarkFlagRequired("name")
-	_ = projectsCreateCmd.MarkFlagRequired("created-by")
 
 	projectsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	projectsUpdateCmd.Flags().String("description", "", "Project description")
-	projectsUpdateCmd.Flags().String("modified-by", "", "User who modified the project (required)")
-	_ = projectsUpdateCmd.MarkFlagRequired("modified-by")
 
 	projectsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
-	projectsDeleteCmd.Flags().String("deleted-by", "", "User who deleted the project (required)")
-	_ = projectsDeleteCmd.MarkFlagRequired("deleted-by")
 }
 
 func runProjectsList(cmd *cobra.Command, args []string) error {
@@ -162,7 +156,10 @@ func runProjectsCreate(cmd *cobra.Command, args []string) error {
 
 	name, _ := cmd.Flags().GetString("name")
 	description, _ := cmd.Flags().GetString("description")
-	createdBy, _ := cmd.Flags().GetString("created-by")
+	createdBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	project := &scheduler0_client.ProjectRequestBody{
 		Name:        name,
@@ -198,7 +195,10 @@ func runProjectsUpdate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid project ID: %w", err)
 	}
 	description, _ := cmd.Flags().GetString("description")
-	modifiedBy, _ := cmd.Flags().GetString("modified-by")
+	modifiedBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	update := &scheduler0_client.ProjectUpdateRequestBody{
 		Description: description,
@@ -232,7 +232,10 @@ func runProjectsDelete(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("invalid project ID: %w", err)
 	}
-	deletedBy, _ := cmd.Flags().GetString("deleted-by")
+	deletedBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	deleteReq := &scheduler0_client.ProjectDeleteRequestBody{
 		DeletedBy: deletedBy,
