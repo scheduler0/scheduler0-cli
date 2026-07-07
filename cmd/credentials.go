@@ -12,12 +12,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// allowedCredentialScopes mirrors the scopes accepted by the Scheduler0 API.
-// Kept in sync with constants.CredentialScope* on the server.
+// allowedCredentialScopes mirrors the scopes accepted by the Scheduler0 API,
+// kept in sync with constants.CredentialScope* on the server. The "admin" scope
+// is accepted here, but the API only lets it be granted by an operator or an
+// existing admin credential.
 var allowedCredentialScopes = map[string]struct{}{
 	"read":    {},
 	"write":   {},
 	"execute": {},
+	"admin":   {},
 }
 
 // parseCredentialScopes turns a `--scopes` flag value (a comma-separated list)
@@ -25,7 +28,7 @@ var allowedCredentialScopes = map[string]struct{}{
 // helpful error so users immediately know which value tripped validation.
 func parseCredentialScopes(raw string) ([]string, error) {
 	if strings.TrimSpace(raw) == "" {
-		return nil, fmt.Errorf("--scopes cannot be empty; choose at least one of read,write,execute")
+		return nil, fmt.Errorf("--scopes cannot be empty; choose at least one of read,write,execute,admin")
 	}
 	parts := strings.Split(raw, ",")
 	seen := make(map[string]struct{}, len(parts))
@@ -36,7 +39,7 @@ func parseCredentialScopes(raw string) ([]string, error) {
 			continue
 		}
 		if _, ok := allowedCredentialScopes[s]; !ok {
-			return nil, fmt.Errorf("invalid scope %q (allowed: read, write, execute)", part)
+			return nil, fmt.Errorf("invalid scope %q (allowed: read, write, execute, admin)", part)
 		}
 		if _, dup := seen[s]; dup {
 			continue
@@ -45,7 +48,7 @@ func parseCredentialScopes(raw string) ([]string, error) {
 		scopes = append(scopes, s)
 	}
 	if len(scopes) == 0 {
-		return nil, fmt.Errorf("--scopes cannot be empty; choose at least one of read,write,execute")
+		return nil, fmt.Errorf("--scopes cannot be empty; choose at least one of read,write,execute,admin")
 	}
 	sort.Strings(scopes)
 	return scopes, nil
@@ -120,19 +123,9 @@ func init() {
 	credentialsListCmd.Flags().String("output", "json", "Output format (json or table)")
 
 	credentialsCreateCmd.Flags().Bool("archived", false, "Whether the credential is archived")
-	credentialsCreateCmd.Flags().String("created-by", "", "User who created the credential (required)")
 	credentialsCreateCmd.Flags().String("scopes", "read,write,execute", "Comma-separated scopes for the credential (read,write,execute)")
-	_ = credentialsCreateCmd.MarkFlagRequired("created-by")
 
 	credentialsUpdateCmd.Flags().Bool("archived", false, "Whether the credential is archived")
-	credentialsUpdateCmd.Flags().String("modified-by", "", "User who modified the credential (required)")
-	_ = credentialsUpdateCmd.MarkFlagRequired("modified-by")
-
-	credentialsDeleteCmd.Flags().String("deleted-by", "", "User who deleted the credential (required)")
-	_ = credentialsDeleteCmd.MarkFlagRequired("deleted-by")
-
-	credentialsArchiveCmd.Flags().String("archived-by", "", "User who archived the credential (required)")
-	_ = credentialsArchiveCmd.MarkFlagRequired("archived-by")
 }
 
 func runCredentialsList(cmd *cobra.Command, args []string) error {
@@ -278,7 +271,10 @@ func runCredentialsCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	archived, _ := cmd.Flags().GetBool("archived")
-	createdBy, _ := cmd.Flags().GetString("created-by")
+	createdBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 	scopesRaw, _ := cmd.Flags().GetString("scopes")
 
 	scopes, err := parseCredentialScopes(scopesRaw)
@@ -318,7 +314,10 @@ func runCredentialsUpdate(cmd *cobra.Command, args []string) error {
 
 	credentialID := args[0]
 	archived, _ := cmd.Flags().GetBool("archived")
-	modifiedBy, _ := cmd.Flags().GetString("modified-by")
+	modifiedBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	update := &scheduler0_client.CredentialUpdateRequestBody{
 		Archived:   archived,
@@ -347,7 +346,10 @@ func runCredentialsDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	credentialID := args[0]
-	deletedBy, _ := cmd.Flags().GetString("deleted-by")
+	deletedBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	deleteReq := &scheduler0_client.CredentialDeleteRequestBody{
 		DeletedBy: deletedBy,
@@ -374,7 +376,10 @@ func runCredentialsArchive(cmd *cobra.Command, args []string) error {
 	}
 
 	credentialID := args[0]
-	archivedBy, _ := cmd.Flags().GetString("archived-by")
+	archivedBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	err = cl.ArchiveCredential(credentialID, archivedBy)
 	if err != nil {

@@ -56,7 +56,6 @@ func init() {
 	localExecutorRegisterCmd.Flags().String("name", "", "Executor name (required)")
 	localExecutorRegisterCmd.Flags().String("command", "", "Shell command to run for each job (required)")
 	localExecutorRegisterCmd.Flags().String("working-dir", "", "Working directory for the command")
-	localExecutorRegisterCmd.Flags().String("created-by", "", "User who is registering the executor")
 	if err := localExecutorRegisterCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)
 	}
@@ -71,9 +70,13 @@ func runLocalExecutorRegister(cmd *cobra.Command, _ []string) error {
 	name, _ := cmd.Flags().GetString("name")
 	command, _ := cmd.Flags().GetString("command")
 	workingDir, _ := cmd.Flags().GetString("working-dir")
-	createdBy, _ := cmd.Flags().GetString("created-by")
 
 	cfg, err := GetClientConfig()
+	if err != nil {
+		return err
+	}
+
+	createdBy, err := actor(cfg)
 	if err != nil {
 		return err
 	}

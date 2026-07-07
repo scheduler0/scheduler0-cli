@@ -81,9 +81,7 @@ func init() {
 	jobsCreateCmd.Flags().Int64("timezone-offset", 0, "Timezone offset in seconds")
 	jobsCreateCmd.Flags().Int("retry-max", 0, "Maximum retries")
 	jobsCreateCmd.Flags().String("status", "active", "Job status (active/inactive)")
-	jobsCreateCmd.Flags().String("created-by", "", "User who created the job (required)")
 	_ = jobsCreateCmd.MarkFlagRequired("project-id")
-	_ = jobsCreateCmd.MarkFlagRequired("created-by")
 
 	jobsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	jobsUpdateCmd.Flags().Int64("project-id", 0, "Project ID")
@@ -96,12 +94,8 @@ func init() {
 	jobsUpdateCmd.Flags().Int64("timezone-offset", 0, "Timezone offset in seconds")
 	jobsUpdateCmd.Flags().Int("retry-max", 0, "Maximum retries")
 	jobsUpdateCmd.Flags().String("status", "", "Job status (active/inactive)")
-	jobsUpdateCmd.Flags().String("modified-by", "", "User who modified the job (required)")
-	_ = jobsUpdateCmd.MarkFlagRequired("modified-by")
 
 	jobsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
-	jobsDeleteCmd.Flags().String("deleted-by", "", "User who deleted the job (required)")
-	_ = jobsDeleteCmd.MarkFlagRequired("deleted-by")
 }
 
 func runJobsList(cmd *cobra.Command, args []string) error {
@@ -185,7 +179,10 @@ func runJobsCreate(cmd *cobra.Command, args []string) error {
 	timezoneOffset, _ := cmd.Flags().GetInt64("timezone-offset")
 	retryMax, _ := cmd.Flags().GetInt("retry-max")
 	status, _ := cmd.Flags().GetString("status")
-	createdBy, _ := cmd.Flags().GetString("created-by")
+	createdBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	job := &scheduler0_client.JobRequestBody{
 		ProjectID:      projectID,
@@ -238,7 +235,10 @@ func runJobsUpdate(cmd *cobra.Command, args []string) error {
 	timezoneOffset, _ := cmd.Flags().GetInt64("timezone-offset")
 	retryMax, _ := cmd.Flags().GetInt("retry-max")
 	status, _ := cmd.Flags().GetString("status")
-	modifiedBy, _ := cmd.Flags().GetString("modified-by")
+	modifiedBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	update := &scheduler0_client.JobUpdateRequestBody{
 		Data:           data,
@@ -282,7 +282,10 @@ func runJobsDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	jobID := args[0]
-	deletedBy, _ := cmd.Flags().GetString("deleted-by")
+	deletedBy, err := actor(cfg)
+	if err != nil {
+		return err
+	}
 
 	deleteReq := &scheduler0_client.JobDeleteRequestBody{
 		DeletedBy: deletedBy,

@@ -42,46 +42,48 @@ Download `scheduler0-windows-amd64.exe` from releases and add it to your PATH.
 
 ## Quick Start
 
-1. **Initialize credentials:**
+1. **Sign in:**
 
 ```bash
-scheduler0 init
+scheduler0 login
 ```
 
-The CLI supports two authentication methods:
+This opens `app.scheduler0.com` in your browser, where you approve access using
+your existing signed-in session. A **short-lived** credential is then stored at
+`~/.scheduler0/config.json` and used for all subsequent commands. When it
+expires, just run `scheduler0 login` again. To sign out, run `scheduler0 logout`.
 
-### API Key Authentication (Managed/Hosted)
-For managed or hosted Scheduler0 instances, you'll be prompted for:
-- Base URL (e.g., `https://api.scheduler0.com`)
-- API Key
-- API Secret
-- Account ID
+The command actor for created/modified/deleted/archived fields is taken
+automatically from your signed-in identity — there is no `--created-by` flag.
 
-Or provide via flags:
+Useful flags:
+
 ```bash
-scheduler0 init \
-  --base-url https://api.scheduler0.com \
-  --api-key your-api-key \
-  --api-secret your-api-secret \
-  --account-id your-account-id
+# Point at a non-default environment (e.g. staging or self-hosted)
+scheduler0 login \
+  --app-url https://app.staging.scheduler0.com \
+  --base-url https://api.staging.scheduler0.com
 ```
 
-### Basic Authentication (Self-Hosted)
-For self-hosted Scheduler0 instances, you'll be prompted for:
-- Base URL (e.g., `http://localhost:7070`)
-- Username (set during infrastructure setup)
-- Password (set during infrastructure setup)
+#### Headless / SSH sessions
 
-Or provide via flags:
+The default flow opens a local browser and receives the authorization code via
+a redirect to `127.0.0.1` — which only works when the browser and the CLI
+share the same machine. Over a plain SSH session there's no local browser, and
+even if you open the printed URL on your laptop instead, its browser can't
+reach a loopback port on the remote host, so that redirect can never arrive.
+
+For this case, `scheduler0 login` automatically detects a headless SSH session
+(no local display) and falls back to a **device code** flow instead: it prints
+a short code and a URL, you open that URL on *any* device (your laptop, your
+phone — it doesn't need to reach the remote machine at all) and enter the
+code, and the CLI polls until you approve it. Force it explicitly with
+`--device` (or the equivalent `--no-browser`) if the auto-detection doesn't
+trigger:
+
 ```bash
-scheduler0 init \
-  --base-url http://localhost:7070 \
-  --username your-username \
-  --password your-password \
-  --auth-type basic
+scheduler0 login --device
 ```
-
-Credentials are saved to `~/.scheduler0/config.json` and will be used for all subsequent commands.
 
 2. **Check cluster health:**
 
@@ -123,13 +125,13 @@ scheduler0 projects list [--limit 10] [--offset 0] [--order-by date_created] [--
 scheduler0 projects get <project-id>
 
 # Create a project
-scheduler0 projects create --name "My Project" --description "Description" --created-by "user-id"
+scheduler0 projects create --name "My Project" --description "Description"
 
 # Update a project
-scheduler0 projects update <project-id> --description "New description" --modified-by "user-id"
+scheduler0 projects update <project-id> --description "New description"
 
 # Delete a project
-scheduler0 projects delete <project-id> --deleted-by "user-id"
+scheduler0 projects delete <project-id>
 ```
 
 ### Jobs
@@ -146,17 +148,15 @@ scheduler0 jobs create \
   --project-id 123 \
   --timezone "UTC" \
   --spec "0 30 * * * *" \
-  --data '{"key": "value"}' \
-  --created-by "user-id"
+  --data '{"key": "value"}'
 
 # Update a job
 scheduler0 jobs update <job-id> \
   --spec "0 0 * * * *" \
-  --status "inactive" \
-  --modified-by "user-id"
+  --status "inactive"
 
 # Delete a job
-scheduler0 jobs delete <job-id> --deleted-by "user-id"
+scheduler0 jobs delete <job-id>
 ```
 
 ### Executors
@@ -174,8 +174,7 @@ scheduler0 executors create \
   --type "webhook_url" \
   --webhook-url "https://example.com/webhook" \
   --webhook-method "POST" \
-  --webhook-secret "secret" \
-  --created-by "user-id"
+  --webhook-secret "secret"
 
 # Create a cloud function executor
 scheduler0 executors create \
@@ -185,16 +184,14 @@ scheduler0 executors create \
   --cloud-provider "aws" \
   --cloud-resource-url "https://example.com/function" \
   --cloud-api-key "key" \
-  --cloud-api-secret "secret" \
-  --created-by "user-id"
+  --cloud-api-secret "secret"
 
 # Update an executor
 scheduler0 executors update <executor-id> \
-  --name "updated-name" \
-  --modified-by "user-id"
+  --name "updated-name"
 
 # Delete an executor
-scheduler0 executors delete <executor-id> --deleted-by "user-id"
+scheduler0 executors delete <executor-id>
 ```
 
 ### AI-Powered Job Creation
@@ -232,8 +229,11 @@ scheduler0 executions \
 
 ### Credentials
 
-Credentials carry **scopes** (`read`, `write`, `execute`) that control which routes
-they can call, and they automatically expire **90 days** after creation.
+Credentials carry **scopes** (`read`, `write`, `execute`, `admin`) that control which
+routes they can call, and they automatically expire (90 days by default; the
+browser login flow mints much shorter-lived ones). The `admin` scope authorizes
+account- and cluster-level operations and can only be granted by an operator or an
+existing admin credential.
 
 The `apiSecret` is returned **once** at creation time as `plaintextSecret` in the JSON response — store it immediately.
 
@@ -244,20 +244,18 @@ scheduler0 credentials list [--limit 10] [--offset 0] [--output json|table]
 # Get credential details
 scheduler0 credentials get <credential-id>
 
-# Create a credential. --scopes accepts a comma-separated subset of read,write,execute
-# and defaults to all three.
-scheduler0 credentials create \
-  --created-by "user-id" \
-  --scopes "read,write"
+# Create a credential. --scopes accepts a comma-separated subset of
+# read,write,execute,admin and defaults to read,write,execute.
+scheduler0 credentials create --scopes "read,write"
 
 # Update a credential
-scheduler0 credentials update <credential-id> --archived true --modified-by "user-id"
+scheduler0 credentials update <credential-id> --archived true
 
 # Archive a credential
-scheduler0 credentials archive <credential-id> --archived-by "user-id"
+scheduler0 credentials archive <credential-id>
 
 # Delete a credential
-scheduler0 credentials delete <credential-id> --deleted-by "user-id"
+scheduler0 credentials delete <credential-id>
 ```
 
 #### Replacing an expiring credential
@@ -265,9 +263,9 @@ scheduler0 credentials delete <credential-id> --deleted-by "user-id"
 When a credential nears its 90-day expiry, create a replacement, roll out the new `apiKey`/`plaintextSecret` to your clients, then archive the old one:
 
 ```bash
-scheduler0 credentials create --created-by "user-id" --scopes "read,write,execute"
+scheduler0 credentials create --scopes "read,write,execute"
 # Update your clients with the new key/secret printed above
-scheduler0 credentials archive <old-credential-id> --archived-by "user-id"
+scheduler0 credentials archive <old-credential-id>
 ```
 
 #### Rotating the server's SecretKey (self-hosting only)
@@ -281,7 +279,7 @@ scheduler0 accounts generate-secret-key
 # 2. Update SecretKey in your secrets source and reload/restart the server
 
 # 3. Re-encrypt stored secrets, passing the previous key.
-#    Requires basic auth (configure auth_type=basic or use --username/--password)
+#    Requires an admin-scoped session (sign in as an operator with `scheduler0 login`).
 scheduler0 accounts rotate-secret --old-secret-key <OLD_HEX_KEY>
 ```
 
@@ -309,107 +307,95 @@ scheduler0 healthcheck
 
 ## Authentication
 
-Scheduler0 CLI supports two authentication methods:
+The CLI authenticates with a **short-lived credential** obtained by signing in
+through your browser:
 
-### 1. API Key Authentication (Managed/Hosted)
-For managed or hosted Scheduler0 instances, use API Key + Secret authentication:
-- `X-API-Key`: Your API key
-- `X-Secret-Key`: Your API secret  
-- `X-Account-ID`: Your account ID
+```bash
+scheduler0 login             # opens app.scheduler0.com to authorize the CLI
+scheduler0 login --device    # headless/SSH-friendly device-code flow
+scheduler0 logout            # clears the stored credential
+```
 
-### 2. Basic Authentication (Self-Hosted)
-For self-hosted Scheduler0 instances, use username and password set during infrastructure setup:
-- Username and password configured during Scheduler0 setup
-- Uses HTTP Basic Authentication
-- No account ID required (single-tenant)
+`scheduler0 login` auto-detects a headless SSH session and switches to the
+device-code flow on its own; see [Headless / SSH sessions](#headless--ssh-sessions).
 
-The CLI will automatically detect which authentication method to use based on your configuration.
+Under the hood, requests are authenticated with the credential's API key/secret
+and account id (`X-API-Key`, `X-Secret-Key`, `X-Account-ID` headers). The session
+expires automatically; re-run `scheduler0 login` to refresh it.
+
+Operator (admin) commands such as `accounts` management, `backup`/`restore`, and
+`accounts rotate-secret` require a credential carrying the **`admin`** scope.
+
+### CI / non-interactive authentication
+
+`scheduler0 login` is interactive, so in CI authenticate with environment
+variables instead — when set, they **take priority** over any on-disk session,
+so no `~/.scheduler0/config.json` file is needed at all:
+
+```bash
+export SCHEDULER0_API_KEY=...        # required
+export SCHEDULER0_API_SECRET=...     # required
+export SCHEDULER0_ACCOUNT_ID=...     # required
+export SCHEDULER0_BASE_URL=...       # optional, defaults to https://api.scheduler0.com
+export SCHEDULER0_ACTOR=github-actions   # required for create/update/delete/archive commands
+export SCHEDULER0_EXPIRES_AT=...     # optional RFC3339; omit and let the server enforce expiry
+```
+
+Mint the credential once interactively and store its output as CI secrets:
+
+```bash
+scheduler0 credentials create --scopes read,write,execute
+```
 
 ## Configuration
 
-Credentials are stored in `~/.scheduler0/config.json`:
+The session is stored in `~/.scheduler0/config.json`, written by `scheduler0 login`:
 
-**API Key Authentication:**
 ```json
 {
   "base_url": "https://api.scheduler0.com",
-  "api_key": "your-api-key",
-  "api_secret": "your-api-secret",
-  "account_id": "your-account-id",
-  "auth_type": "api_key"
+  "app_url": "https://app.scheduler0.com",
+  "api_key": "…",
+  "api_secret": "…",
+  "account_id": "…",
+  "clerk_user_id": "user_…",
+  "expires_at": "2026-07-07T12:00:00Z",
+  "scopes": ["read", "write", "execute"]
 }
 ```
 
-**Basic Authentication (Self-Hosted):**
-```json
-{
-  "base_url": "http://localhost:7070",
-  "username": "your-username",
-  "password": "your-password",
-  "auth_type": "basic"
-}
-```
+You can override the endpoint or account for a single command:
 
-You can override the saved configuration using flags:
-
-**API Key Auth:**
 ```bash
 scheduler0 projects list \
   --base-url https://api.example.com \
-  --api-key different-key \
-  --api-secret different-secret \
   --account-id different-account
 ```
 
-**Basic Auth:**
-```bash
-scheduler0 projects list \
-  --base-url http://localhost:7070 \
-  --username admin \
-  --password secret
-```
-
-## Environment Variables
-
-You can also use environment variables (though using `init` is recommended):
-
-**For API Key Authentication:**
-- `SCHEDULER0_BASE_URL`
-- `SCHEDULER0_API_KEY`
-- `SCHEDULER0_API_SECRET`
-- `SCHEDULER0_ACCOUNT_ID`
-
-**For Basic Authentication (Self-Hosted):**
-- `SCHEDULER0_BASE_URL`
-- `SCHEDULER0_USERNAME`
-- `SCHEDULER0_PASSWORD`
-
 ## Examples
 
-### Complete Workflow (API Key Authentication)
+### Complete Workflow
 
 ```bash
-# 1. Initialize with API key authentication
-scheduler0 init
+# 1. Sign in
+scheduler0 login
 
 # 2. Create a project
-scheduler0 projects create --name "My Project" --created-by "user-123"
+scheduler0 projects create --name "My Project"
 
 # 3. Create an executor
 scheduler0 executors create \
   --name "webhook" \
   --type "webhook_url" \
   --webhook-url "https://api.example.com/webhook" \
-  --webhook-method "POST" \
-  --created-by "user-123"
+  --webhook-method "POST"
 
 # 4. Create a job (or use AI prompt to generate job configurations)
 scheduler0 jobs create \
   --project-id 1 \
   --timezone "UTC" \
   --spec "0 30 * * * *" \
-  --data '{"message": "Hello"}' \
-  --created-by "user-123"
+  --data '{"message": "Hello"}'
 
 # Alternative: Use AI to generate job configurations from natural language
 scheduler0 prompt \
@@ -421,31 +407,6 @@ scheduler0 prompt \
 scheduler0 executions \
   --start-date "2024-01-01T00:00:00Z" \
   --end-date "2024-12-31T23:59:59Z"
-```
-
-### Self-Hosted Workflow (Basic Authentication)
-
-```bash
-# 1. Initialize with basic authentication for self-hosted instance
-scheduler0 init \
-  --base-url http://localhost:7070 \
-  --username admin \
-  --password your-password \
-  --auth-type basic
-
-# 2. Check cluster health
-scheduler0 healthcheck
-
-# 3. Create a project (no account ID needed for self-hosted)
-scheduler0 projects create --name "My Project" --created-by "admin"
-
-# 4. Create and manage jobs
-scheduler0 jobs create \
-  --project-id 1 \
-  --timezone "UTC" \
-  --spec "0 30 * * * *" \
-  --data '{"message": "Hello"}' \
-  --created-by "admin"
 ```
 
 ## Building from Source
