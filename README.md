@@ -112,8 +112,6 @@ scheduler0 accounts create --name "My Account"
 # Get account details
 scheduler0 accounts get <account-id>
 ```
-<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
-codebase_search
 
 ### Projects
 
@@ -438,8 +436,4 @@ GOOS=windows GOARCH=amd64 go build -o scheduler0-windows-amd64.exe
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
