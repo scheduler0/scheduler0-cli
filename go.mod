@@ -1,6 +1,6 @@
 module github.com/scheduler0/scheduler0-cli
 
-go 1.25.0
+go 1.26.5
 
 require (
 	github.com/robfig/cron v1.2.0
