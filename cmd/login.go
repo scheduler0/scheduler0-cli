@@ -250,8 +250,9 @@ func exchangeCode(ctx context.Context, appURL, code, verifier string) (*tokenRes
 // poller can distinguish "keep waiting" (authorization_pending) from a genuine
 // failure. A non-nil err means a transport-level or malformed-response failure.
 func postToken(ctx context.Context, appURL string, body map[string]string) (tok *tokenResponse, apiErr string, err error) {
+	tokenURL := strings.TrimRight(appURL, "/") + "/cli/token"
 	raw, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(appURL, "/")+"/cli/token", strings.NewReader(string(raw)))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(string(raw)))
 	if err != nil {
 		return nil, "", err
 	}
@@ -264,14 +265,26 @@ func postToken(ctx context.Context, appURL string, body map[string]string) (tok 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		var e struct {
 			Error string `json:"error"`
 		}
-		_ = json.NewDecoder(resp.Body).Decode(&e)
+		_ = json.Unmarshal(bodyBytes, &e)
 		if e.Error != "" {
 			return nil, e.Error, nil
 		}
-		return nil, "", fmt.Errorf("token endpoint returned %d", resp.StatusCode)
+		wwwAuth := resp.Header.Get("WWW-Authenticate")
+		if wwwAuth != "" {
+			return nil, "", fmt.Errorf("token endpoint returned %d (WWW-Authenticate: %s) — the server requires HTTP Basic Auth; URL: %s", resp.StatusCode, wwwAuth, tokenURL)
+		}
+		bodySnippet := strings.TrimSpace(string(bodyBytes))
+		if len(bodySnippet) > 120 {
+			bodySnippet = bodySnippet[:120] + "…"
+		}
+		if bodySnippet != "" {
+			return nil, "", fmt.Errorf("token endpoint returned %d; URL: %s; body: %s", resp.StatusCode, tokenURL, bodySnippet)
+		}
+		return nil, "", fmt.Errorf("token endpoint returned %d; URL: %s", resp.StatusCode, tokenURL)
 	}
 
 	var t tokenResponse
@@ -296,7 +309,8 @@ type deviceCodeResponse struct {
 
 // requestDeviceCode asks the web app for a new device/user code pair.
 func requestDeviceCode(ctx context.Context, appURL string) (*deviceCodeResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(appURL, "/")+"/cli/device/code", nil)
+	deviceCodeURL := strings.TrimRight(appURL, "/") + "/cli/device/code"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, deviceCodeURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -308,14 +322,26 @@ func requestDeviceCode(ctx context.Context, appURL string) (*deviceCodeResponse,
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		var e struct {
 			Error string `json:"error"`
 		}
-		_ = json.NewDecoder(resp.Body).Decode(&e)
+		_ = json.Unmarshal(bodyBytes, &e)
 		if e.Error != "" {
 			return nil, fmt.Errorf("device code request failed: %s", e.Error)
 		}
-		return nil, fmt.Errorf("device code endpoint returned %d", resp.StatusCode)
+		wwwAuth := resp.Header.Get("WWW-Authenticate")
+		if wwwAuth != "" {
+			return nil, fmt.Errorf("device code endpoint returned %d (WWW-Authenticate: %s) — the server requires HTTP Basic Auth; URL: %s", resp.StatusCode, wwwAuth, deviceCodeURL)
+		}
+		bodySnippet := strings.TrimSpace(string(bodyBytes))
+		if len(bodySnippet) > 120 {
+			bodySnippet = bodySnippet[:120] + "…"
+		}
+		if bodySnippet != "" {
+			return nil, fmt.Errorf("device code endpoint returned %d; URL: %s; body: %s", resp.StatusCode, deviceCodeURL, bodySnippet)
+		}
+		return nil, fmt.Errorf("device code endpoint returned %d; URL: %s", resp.StatusCode, deviceCodeURL)
 	}
 
 	var dc deviceCodeResponse
