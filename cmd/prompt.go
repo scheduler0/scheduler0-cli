@@ -36,11 +36,13 @@ func init() {
 	promptCmd.Flags().StringSlice("recipients", []string{}, "Array of recipient identifiers (max 5 items, each max 36 characters)")
 	promptCmd.Flags().StringSlice("channels", []string{}, "Array of delivery channels (max 5 items, each max 36 characters)")
 	promptCmd.Flags().String("timezone", "", "Optional IANA timezone for scheduling calculations (e.g., UTC, America/New_York). Defaults to UTC when omitted; invalid values are rejected by the API.")
+	promptCmd.Flags().String("locale", "", "Optional BCP-47 locale (e.g., en-US, es-ES) forwarded to the AI model so natural-language output is written in that language. Defaults to en when omitted.")
 	_ = promptCmd.MarkFlagRequired("prompt")
 
 	// classify subcommand
 	promptCmd.AddCommand(classifyCmd)
 	classifyCmd.Flags().String("prompt", "", "Natural language prompt to classify (required)")
+	classifyCmd.Flags().String("locale", "", "Optional BCP-47 locale. The intent classifier is English-only, so any non-English (en*) value is rejected by the API with 400.")
 	_ = classifyCmd.MarkFlagRequired("prompt")
 }
 
@@ -61,6 +63,7 @@ func runPrompt(cmd *cobra.Command, args []string) error {
 	recipients, _ := cmd.Flags().GetStringSlice("recipients")
 	channels, _ := cmd.Flags().GetStringSlice("channels")
 	timezone, _ := cmd.Flags().GetString("timezone")
+	locale, _ := cmd.Flags().GetString("locale")
 
 	if len(strings.TrimSpace(prompt)) == 0 {
 		return fmt.Errorf("prompt cannot be empty")
@@ -121,6 +124,9 @@ func runPrompt(cmd *cobra.Command, args []string) error {
 	if timezone != "" {
 		request.Timezone = timezone
 	}
+	if strings.TrimSpace(locale) != "" {
+		request.Locale = strings.TrimSpace(locale)
+	}
 
 	result, err := cl.CreateJobFromPrompt(request)
 	if err != nil {
@@ -159,9 +165,11 @@ func runClassify(cmd *cobra.Command, args []string) error {
 	if strings.TrimSpace(prompt) == "" {
 		return fmt.Errorf("prompt cannot be empty")
 	}
+	locale, _ := cmd.Flags().GetString("locale")
 
 	classification, err := cl.ClassifyPrompt(&scheduler0_client.ClassifyPromptRequest{
 		Prompt: strings.TrimSpace(prompt),
+		Locale: strings.TrimSpace(locale),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to classify prompt: %w", err)
