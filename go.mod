@@ -1,10 +1,10 @@
 module github.com/scheduler0/scheduler0-cli
 
-go 1.25.0
+go 1.26.5
 
 require (
 	github.com/robfig/cron v1.2.0
-	github.com/scheduler0/scheduler0-go-client v1.7.1-0.20260707065842-356bdc6caded
+	github.com/scheduler0/scheduler0-go-client/v2 v2.0.2
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.11.1
 	modernc.org/sqlite v1.52.0

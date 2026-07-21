@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/scheduler0/scheduler0-cli/internal/config"
-	scheduler0_client "github.com/scheduler0/scheduler0-go-client"
+	scheduler0_client "github.com/scheduler0/scheduler0-go-client/v2"
 )
 
 // NewClient creates a new Scheduler0 client from the stored session credential.
