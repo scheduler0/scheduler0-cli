@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/scheduler0/scheduler0-cli/internal/config"
-	scheduler0_client "github.com/scheduler0/scheduler0-go-client"
+	scheduler0_client "github.com/scheduler0/scheduler0-go-client/v2"
 	"github.com/spf13/cobra"
 )
 

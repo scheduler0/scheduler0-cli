@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	scheduler0 "github.com/scheduler0/scheduler0-go-client"
+	scheduler0 "github.com/scheduler0/scheduler0-go-client/v2"
 
 	"github.com/robfig/cron"
 )

@@ -13,7 +13,7 @@ import (
 	"github.com/scheduler0/scheduler0-cli/internal/client"
 	"github.com/scheduler0/scheduler0-cli/internal/config"
 	"github.com/scheduler0/scheduler0-cli/internal/localexecutor"
-	scheduler0 "github.com/scheduler0/scheduler0-go-client"
+	scheduler0 "github.com/scheduler0/scheduler0-go-client/v2"
 	"github.com/spf13/cobra"
 )
 
