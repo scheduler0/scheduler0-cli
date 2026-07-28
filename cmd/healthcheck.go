@@ -26,7 +26,7 @@ func runHealthcheck(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		// If no config, try to use base-url flag or default
 		if baseURL == "" {
-			return fmt.Errorf("base URL is required. Use --base-url flag or run 'scheduler0 init'")
+			return fmt.Errorf("base URL is required. Use --base-url flag or run 'scheduler0 login'")
 		}
 		cfg = &config.Config{BaseURL: baseURL}
 	}
