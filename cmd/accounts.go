@@ -96,7 +96,10 @@ Steps:
      POST /api/v1/account/rotate-secret on the server, which decrypts every stored
      secret with the old key and re-encrypts it with the loaded new key.
 
-Requires Basic Authentication (--username / --password or saved config with auth_type=basic).`,
+Requires an admin-scoped session: sign in as an operator with 'scheduler0 login'
+(or set the SCHEDULER0_* environment variables for a CI credential carrying the
+admin scope). There are no --username/--password flags; the API is authenticated
+with the signed-in credential.`,
 	RunE: runAccountsRotateSecret,
 }
 
@@ -219,7 +222,7 @@ func runAccountsTokensAdd(cmd *cobra.Command, args []string) error {
 
 // runAccountsRotateSecret calls POST /account/rotate-secret on the server to re-encrypt
 // credential api secrets, executor cloud credentials, and AI provider keys from the old
-// SecretKey to the server's currently-loaded new one. Requires basic auth.
+// SecretKey to the server's currently-loaded new one. Requires an admin-scoped session.
 func runAccountsRotateSecret(cmd *cobra.Command, args []string) error {
 	cfg, err := GetClientConfig()
 	if err != nil {

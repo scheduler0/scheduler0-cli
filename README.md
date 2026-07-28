@@ -99,7 +99,7 @@ scheduler0 projects list
 
 ## Commands
 
-> **Note for Self-Hosted Users**: Account Management, Feature Management, and Async Tasks Management APIs are designed for users who run Scheduler0 in their own infrastructure and need granular control over team access and resource usage. These features enable multi-tenant management, feature flags, and async task tracking in self-hosted deployments.
+> **Note for Self-Hosted Users**: Account Management and Async Tasks Management APIs are designed for users who run Scheduler0 in their own infrastructure and need granular control over team access and resource usage. These features enable multi-tenant management and async task tracking in self-hosted deployments.
 
 ### Accounts
 
@@ -111,6 +111,18 @@ scheduler0 accounts create --name "My Account"
 
 # Get account details
 scheduler0 accounts get <account-id>
+
+# Get an account's token balance
+scheduler0 accounts tokens get <account-id>
+
+# Add tokens to an account's balance
+scheduler0 accounts tokens add <account-id> --amount 1000
+
+# Generate random AES-256 secret key(s) offline (no API call)
+scheduler0 accounts generate-secret-key [--count 1]
+
+# Re-encrypt stored secrets after rotating the server SecretKey (admin-scoped session)
+scheduler0 accounts rotate-secret --old-secret-key <OLD_HEX_KEY>
 ```
 
 ### Projects
@@ -136,19 +148,31 @@ scheduler0 projects delete <project-id>
 
 ```bash
 # List jobs
-scheduler0 jobs list [--project-id <id>] [--limit 10] [--offset 0]
+scheduler0 jobs list [--project-id <id>] [--limit 10] [--offset 0] [--order-by date_created] [--order-direction desc]
 
 # Get job details
 scheduler0 jobs get <job-id>
 
-# Create a job
+# Create a job (--project-id is required)
 scheduler0 jobs create \
   --project-id 123 \
   --timezone "UTC" \
   --spec "0 30 * * * *" \
   --data '{"key": "value"}'
 
-# Update a job
+# All jobs create flags:
+#   --project-id <id>          Project ID (required)
+#   --executor-id <id>         Executor ID
+#   --data <string>            Job payload data
+#   --spec <cron>              Cron specification
+#   --start-date <RFC3339>     Start date
+#   --end-date <RFC3339>       End date
+#   --timezone <tz>            Timezone (default "UTC")
+#   --timezone-offset <secs>   Timezone offset in seconds
+#   --retry-max <n>            Maximum retries
+#   --status <active|inactive> Job status (default "active")
+
+# Update a job (same flags as create, minus the required --project-id)
 scheduler0 jobs update <job-id> \
   --spec "0 0 * * * *" \
   --status "inactive"
@@ -161,7 +185,7 @@ scheduler0 jobs delete <job-id>
 
 ```bash
 # List executors
-scheduler0 executors list [--limit 10] [--offset 0]
+scheduler0 executors list [--limit 10] [--offset 0] [--order-by date_created] [--order-direction desc]
 
 # Get executor details
 scheduler0 executors get <executor-id>
@@ -206,11 +230,75 @@ scheduler0 prompt \
 
 # Simple prompt (only required field)
 scheduler0 prompt --prompt "Follow up 2 days after the demo"
+
+# Classify a prompt with the intent guardrail only (no AI execution, no credits consumed)
+scheduler0 prompt classify --prompt "Send weekly reports every Monday at 9 AM"
 ```
 
-**Note**: This endpoint requires credits. Each prompt execution consumes 1 credit. If you have insufficient credits, you'll receive an error.
+**Note**: The `prompt` command requires credits. Each prompt execution consumes 1 credit. If you have insufficient credits, you'll receive an error. `prompt classify` runs only the edge intent classifier and consumes no credits.
 
 The `--timezone` flag is optional. When omitted, the AI assumes `UTC`. When set to an IANA name (e.g. `America/New_York`), the AI interprets relative phrases like *"9am tomorrow"* in that timezone and emits timestamps with the matching numeric offset. Invalid timezone strings are rejected by the API with `400 Bad Request`.
+
+### AI Scheduling (schedule)
+
+Turn a natural language prompt into scheduled jobs in one call. The server runs the
+prompt pipeline (intent guardrail + generation), resolves or creates a project, picks
+the best-matching executor (or uses a pinned/only one), and creates the jobs
+synchronously. The `createdBy` field is taken automatically from your signed-in
+identity (or `SCHEDULER0_ACTOR` in CI) — there is no `--created-by` flag. This endpoint
+requires credits.
+
+```bash
+scheduler0 schedule \
+  --prompt "Send weekly reports every Monday at 9 AM" \
+  [--purposes "reporting,communication"] \
+  [--events "weekly_cycle"] \
+  [--recipients "team@example.com"] \
+  [--channels "email"] \
+  [--timezone "America/New_York"] \
+  [--locale "en"] \
+  [--project-id <id>] \
+  [--executor-id <id>]
+```
+
+### AI Suggestions
+
+Analyze conversations and compute optimal send times using the AI suggestions engine.
+Because the request bodies are complex, they are read as JSON from a `--file` path, or
+from stdin when `--file` is omitted or set to `-`.
+
+```bash
+# Analyze a conversation for suggestions and obligations
+scheduler0 suggestions analyze --file conversation.json
+cat conversation.json | scheduler0 suggestions analyze
+
+# Recommend optimal future send times for a message
+scheduler0 suggestions time --file sendtime.json
+cat sendtime.json | scheduler0 suggestions time
+```
+
+### AI Settings & Models
+
+Manage per-account AI provider settings, and view the catalog of approved models.
+
+```bash
+# Get the current account's AI provider settings
+scheduler0 ai-settings get [--account-id <id>]
+
+# Create or update the account's AI provider settings
+scheduler0 ai-settings upsert \
+  --provider openai \
+  --model gpt-4o \
+  --openai-api-key <key> \
+  [--anthropic-api-key <key>] \
+  [--bedrock-access-key-id <id>] \
+  [--bedrock-secret-key <key>] \
+  [--bedrock-region <region>] \
+  [--account-id <id>]
+
+# List the per-provider approved model catalog
+scheduler0 ai-models
+```
 
 ### Executions
 
@@ -244,7 +332,8 @@ scheduler0 credentials get <credential-id>
 
 # Create a credential. --scopes accepts a comma-separated subset of
 # read,write,execute,admin and defaults to read,write,execute.
-scheduler0 credentials create --scopes "read,write"
+# Pass --archived to create it in an archived state.
+scheduler0 credentials create --scopes "read,write" [--archived]
 
 # Update a credential
 scheduler0 credentials update <credential-id> --archived true
@@ -292,9 +381,33 @@ The server decrypts every stored secret with the old key and re-encrypts it with
 scheduler0 async-tasks get <request-id>
 ```
 
-### Feature Management
+### Local Executor
 
-> **Self-Hosted Feature**: Feature management allows self-hosted users to enable or disable specific capabilities for accounts, providing granular control over resource usage and feature access. Features can be managed through the account endpoints (see Accounts section above).
+Run jobs directly on this machine. Register the machine once, then start the
+long-running service that polls for assigned jobs and executes them locally.
+
+```bash
+# Register this machine as a local executor (saves the executor ID to config)
+scheduler0 local-executor register \
+  --name "my-machine" \
+  --command "/path/to/handler.sh" \
+  [--working-dir /path/to/dir]
+
+# Start the local executor service
+scheduler0 local-executor start [--poll-interval 1m]
+```
+
+### Backup & Restore
+
+> **Self-Hosted Feature**: Database backup and restore require an admin-scoped session.
+
+```bash
+# Start an automatic timestamped backup
+scheduler0 backup start
+
+# Restore the database from a backup file (S3 object key or local path)
+scheduler0 backup restore <file-name>
+```
 
 ### Healthcheck
 
