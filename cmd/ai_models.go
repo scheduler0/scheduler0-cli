@@ -8,18 +8,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var aiModelsCmd = &cobra.Command{
+var aiModelsRootCmd = &cobra.Command{
 	Use:   "ai-models",
 	Short: "List the approved AI models catalog",
 	Long:  "Get the per-provider approved model catalog (GET /api/v1/ai/models). The catalog lists every model that Scheduler0 accepts for each provider.",
-	RunE:  runAIModels,
+	RunE:  runAIModelsRoot,
 }
 
 func init() {
-	rootCmd.AddCommand(aiModelsCmd)
+	rootCmd.AddCommand(aiModelsRootCmd)
 }
 
-func runAIModels(cmd *cobra.Command, args []string) error {
+func runAIModelsRoot(cmd *cobra.Command, args []string) error {
 	cfg, err := GetClientConfig()
 	if err != nil {
 		return err
