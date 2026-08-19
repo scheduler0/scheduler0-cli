@@ -56,9 +56,6 @@ func init() {
 
 	aiSettingsUpsertCmd.Flags().String("account-id", "", "Account ID (overrides configured account)")
 	aiSettingsUpsertCmd.Flags().String("active-models", "", `JSON array of active models, e.g. '[{"provider":"openai","model":"gpt-4.1-mini"}]'`)
-	// Legacy single-model flags (still accepted for backward compatibility).
-	aiSettingsUpsertCmd.Flags().String("provider", "", "AI provider (deprecated: use --active-models)")
-	aiSettingsUpsertCmd.Flags().String("model", "", "AI model name (deprecated: use --active-models)")
 	aiSettingsUpsertCmd.Flags().String("openai-api-key", "", "OpenAI API key")
 	aiSettingsUpsertCmd.Flags().String("anthropic-api-key", "", "Anthropic API key")
 	aiSettingsUpsertCmd.Flags().String("bedrock-access-key-id", "", "AWS Bedrock access key ID")
@@ -102,8 +99,6 @@ func runAISettingsUpsert(cmd *cobra.Command, args []string) error {
 
 	accountID, _ := cmd.Flags().GetString("account-id")
 	activeModelsJSON, _ := cmd.Flags().GetString("active-models")
-	provider, _ := cmd.Flags().GetString("provider")
-	model, _ := cmd.Flags().GetString("model")
 	openAIAPIKey, _ := cmd.Flags().GetString("openai-api-key")
 	anthropicAPIKey, _ := cmd.Flags().GetString("anthropic-api-key")
 	bedrockAccessKeyID, _ := cmd.Flags().GetString("bedrock-access-key-id")
@@ -112,8 +107,6 @@ func runAISettingsUpsert(cmd *cobra.Command, args []string) error {
 	openRouterAPIKey, _ := cmd.Flags().GetString("openrouter-api-key")
 
 	settings := &scheduler0_client.AccountAISettings{
-		Provider:           provider,
-		Model:              model,
 		OpenAIAPIKey:       openAIAPIKey,
 		AnthropicAPIKey:    anthropicAPIKey,
 		BedrockAccessKeyID: bedrockAccessKeyID,
@@ -122,7 +115,6 @@ func runAISettingsUpsert(cmd *cobra.Command, args []string) error {
 		OpenRouterAPIKey:   openRouterAPIKey,
 	}
 
-	// Parse --active-models JSON if provided.
 	if activeModelsJSON != "" {
 		var activeModels []scheduler0_client.ActiveModel
 		if parseErr := json.Unmarshal([]byte(activeModelsJSON), &activeModels); parseErr != nil {

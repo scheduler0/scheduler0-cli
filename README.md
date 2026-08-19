@@ -287,8 +287,7 @@ scheduler0 ai-settings get [--account-id <id>]
 
 # Create or update the account's AI provider settings
 scheduler0 ai-settings upsert \
-  --provider openai \
-  --model gpt-4o \
+  --active-models '[{"provider":"openai","model":"gpt-4o"}]' \
   --openai-api-key <key> \
   [--anthropic-api-key <key>] \
   [--bedrock-access-key-id <id>] \
