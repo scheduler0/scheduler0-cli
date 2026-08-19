@@ -53,6 +53,14 @@ var executorsDeleteCmd = &cobra.Command{
 	RunE:  runExecutorsDelete,
 }
 
+var executorsTestInvokeCmd = &cobra.Command{
+	Use:   "test-invoke [executor-id]",
+	Short: "Test-invoke an executor with a synthetic job",
+	Long:  "Synchronously invokes the executor with a synthetic job so you can verify connectivity/credentials without scheduling a real job. Not supported for local executors.",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runExecutorsTestInvoke,
+}
+
 func init() {
 	rootCmd.AddCommand(executorsCmd)
 	executorsCmd.AddCommand(executorsListCmd)
@@ -60,6 +68,7 @@ func init() {
 	executorsCmd.AddCommand(executorsCreateCmd)
 	executorsCmd.AddCommand(executorsUpdateCmd)
 	executorsCmd.AddCommand(executorsDeleteCmd)
+	executorsCmd.AddCommand(executorsTestInvokeCmd)
 
 	executorsListCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	executorsListCmd.Flags().Int("limit", 10, "Maximum number of items to return")
@@ -96,6 +105,10 @@ func init() {
 	executorsUpdateCmd.Flags().String("webhook-method", "", "Webhook HTTP method")
 
 	executorsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
+
+	executorsTestInvokeCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
+	executorsTestInvokeCmd.Flags().String("age", "", "How old the synthetic job entry should appear, as a Go duration string (e.g. 24h, 1h30m)")
+	executorsTestInvokeCmd.Flags().String("execution-time", "", "Moment the job is treated as executing at (RFC3339); defaults to now")
 }
 
 func runExecutorsList(cmd *cobra.Command, args []string) error {
@@ -286,6 +299,37 @@ func runExecutorsDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Executor %s deleted successfully\n", executorID)
+	return nil
+}
+
+func runExecutorsTestInvoke(cmd *cobra.Command, args []string) error {
+	cfg, err := GetClientConfig()
+	if err != nil {
+		return err
+	}
+	applyAccountIDFlag(cmd, cfg)
+
+	cl, err := client.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	executorID := args[0]
+	age, _ := cmd.Flags().GetString("age")
+	executionTime, _ := cmd.Flags().GetString("execution-time")
+
+	body := &scheduler0_client.TestInvocationRequestBody{
+		Age:           age,
+		ExecutionTime: executionTime,
+	}
+
+	result, err := cl.TestInvokeExecutor(executorID, body)
+	if err != nil {
+		return fmt.Errorf("failed to test-invoke executor: %w", err)
+	}
+
+	output, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Println(string(output))
 	return nil
 }
 
