@@ -115,7 +115,6 @@ func runAISettingsUpsert(cmd *cobra.Command, args []string) error {
 		OpenRouterAPIKey:   openRouterAPIKey,
 	}
 
-	// Parse --active-models JSON if provided.
 	if activeModelsJSON != "" {
 		var activeModels []scheduler0_client.ActiveModel
 		if parseErr := json.Unmarshal([]byte(activeModelsJSON), &activeModels); parseErr != nil {
