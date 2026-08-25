@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/robfig/cron v1.2.0
-	github.com/scheduler0/scheduler0-go-client/v2 v2.0.2
+	github.com/scheduler0/scheduler0-go-client/v2 v2.0.5-0.20260819165235-39dfc3793ff8
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.11.1
 	modernc.org/sqlite v1.52.0

@@ -33,6 +33,85 @@ var accountsGetCmd = &cobra.Command{
 	RunE:  runAccountsGet,
 }
 
+var accountsUpdateCmd = &cobra.Command{
+	Use:   "update [account-id]",
+	Short: "Update an account",
+	Long:  "Rename an account",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAccountsUpdate,
+}
+
+var accountsExecutionCountCmd = &cobra.Command{
+	Use:   "execution-count",
+	Short: "Manage account execution count",
+	Long:  "Commands for reading and increasing an account's monthly execution count",
+}
+
+var accountsExecutionCountGetCmd = &cobra.Command{
+	Use:   "get [account-id]",
+	Short: "Get account execution count",
+	Long:  "Get the current execution count and next reset date for an account",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAccountsExecutionCountGet,
+}
+
+var accountsExecutionCountIncreaseCmd = &cobra.Command{
+	Use:   "increase [account-id]",
+	Short: "Increase account execution count",
+	Long:  "Increase the execution count for an account by the given amount",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAccountsExecutionCountIncrease,
+}
+
+var accountsAIUsageCmd = &cobra.Command{
+	Use:   "ai-usage [account-id]",
+	Short: "Get account AI request usage",
+	Long:  "Get the account's log-derived AI prompt/classify usage for the current period (limits, used, remaining, estimated cost).",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAccountsAIUsage,
+}
+
+var accountsFeatureCmd = &cobra.Command{
+	Use:   "feature",
+	Short: "Manage a single feature on an account",
+	Long:  "Commands for adding/removing a single feature on an account",
+}
+
+var accountsFeatureAddCmd = &cobra.Command{
+	Use:   "add [account-id]",
+	Short: "Add a feature to an account",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAccountsFeatureAdd,
+}
+
+var accountsFeatureRemoveCmd = &cobra.Command{
+	Use:   "remove [account-id]",
+	Short: "Remove a feature from an account",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAccountsFeatureRemove,
+}
+
+var accountsFeaturesAllCmd = &cobra.Command{
+	Use:   "features-all [account-id]",
+	Short: "Add or remove every feature on an account",
+	Long:  "Commands for adding/removing every known feature on an account at once",
+	Args:  cobra.ExactArgs(1),
+}
+
+var accountsFeaturesAllAddCmd = &cobra.Command{
+	Use:   "add [account-id]",
+	Short: "Add every feature to an account",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAccountsFeaturesAllAdd,
+}
+
+var accountsFeaturesAllRemoveCmd = &cobra.Command{
+	Use:   "remove [account-id]",
+	Short: "Remove every feature from an account",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAccountsFeaturesAllRemove,
+}
+
 var accountsTokensCmd = &cobra.Command{
 	Use:   "tokens",
 	Short: "Manage account token balance",
@@ -107,6 +186,17 @@ func init() {
 	rootCmd.AddCommand(accountsCmd)
 	accountsCmd.AddCommand(accountsCreateCmd)
 	accountsCmd.AddCommand(accountsGetCmd)
+	accountsCmd.AddCommand(accountsUpdateCmd)
+	accountsCmd.AddCommand(accountsExecutionCountCmd)
+	accountsExecutionCountCmd.AddCommand(accountsExecutionCountGetCmd)
+	accountsExecutionCountCmd.AddCommand(accountsExecutionCountIncreaseCmd)
+	accountsCmd.AddCommand(accountsAIUsageCmd)
+	accountsCmd.AddCommand(accountsFeatureCmd)
+	accountsFeatureCmd.AddCommand(accountsFeatureAddCmd)
+	accountsFeatureCmd.AddCommand(accountsFeatureRemoveCmd)
+	accountsCmd.AddCommand(accountsFeaturesAllCmd)
+	accountsFeaturesAllCmd.AddCommand(accountsFeaturesAllAddCmd)
+	accountsFeaturesAllCmd.AddCommand(accountsFeaturesAllRemoveCmd)
 	accountsCmd.AddCommand(accountsTokensCmd)
 	accountsTokensCmd.AddCommand(accountsTokensGetCmd)
 	accountsTokensCmd.AddCommand(accountsTokensAddCmd)
@@ -115,6 +205,18 @@ func init() {
 
 	accountsCreateCmd.Flags().String("name", "", "Account name (required)")
 	_ = accountsCreateCmd.MarkFlagRequired("name")
+
+	accountsUpdateCmd.Flags().String("name", "", "New account name (required)")
+	_ = accountsUpdateCmd.MarkFlagRequired("name")
+
+	accountsExecutionCountIncreaseCmd.Flags().Uint64("count", 0, "Amount to increase the execution count by (required)")
+	_ = accountsExecutionCountIncreaseCmd.MarkFlagRequired("count")
+
+	accountsFeatureAddCmd.Flags().Int64("feature-id", 0, "ID of the feature to add (required)")
+	_ = accountsFeatureAddCmd.MarkFlagRequired("feature-id")
+
+	accountsFeatureRemoveCmd.Flags().Int64("feature-id", 0, "ID of the feature to remove (required)")
+	_ = accountsFeatureRemoveCmd.MarkFlagRequired("feature-id")
 
 	accountsTokensAddCmd.Flags().Int64("amount", 0, "Number of tokens to add (must be > 0, required)")
 	_ = accountsTokensAddCmd.MarkFlagRequired("amount")
@@ -171,6 +273,184 @@ func runAccountsGet(cmd *cobra.Command, args []string) error {
 
 	output, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Println(string(output))
+	return nil
+}
+
+func runAccountsUpdate(cmd *cobra.Command, args []string) error {
+	cfg, err := GetClientConfig()
+	if err != nil {
+		return err
+	}
+
+	cl, err := client.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	accountID := args[0]
+	name, _ := cmd.Flags().GetString("name")
+
+	result, err := cl.UpdateAccount(accountID, &scheduler0_client.AccountUpdateRequestBody{Name: name})
+	if err != nil {
+		return fmt.Errorf("failed to update account: %w", err)
+	}
+
+	output, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Println(string(output))
+	return nil
+}
+
+func runAccountsExecutionCountGet(cmd *cobra.Command, args []string) error {
+	cfg, err := GetClientConfig()
+	if err != nil {
+		return err
+	}
+
+	cl, err := client.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	accountID := args[0]
+	result, err := cl.GetAccountExecutionCount(accountID)
+	if err != nil {
+		return fmt.Errorf("failed to get account execution count: %w", err)
+	}
+
+	output, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Println(string(output))
+	return nil
+}
+
+func runAccountsExecutionCountIncrease(cmd *cobra.Command, args []string) error {
+	cfg, err := GetClientConfig()
+	if err != nil {
+		return err
+	}
+
+	cl, err := client.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	accountID := args[0]
+	count, _ := cmd.Flags().GetUint64("count")
+
+	result, err := cl.IncreaseAccountExecutionCount(accountID, count)
+	if err != nil {
+		return fmt.Errorf("failed to increase account execution count: %w", err)
+	}
+
+	output, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Println(string(output))
+	return nil
+}
+
+func runAccountsAIUsage(cmd *cobra.Command, args []string) error {
+	cfg, err := GetClientConfig()
+	if err != nil {
+		return err
+	}
+
+	cl, err := client.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	accountID := args[0]
+	result, err := cl.GetAIUsage(accountID)
+	if err != nil {
+		return fmt.Errorf("failed to get account AI usage: %w", err)
+	}
+
+	output, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Println(string(output))
+	return nil
+}
+
+func runAccountsFeatureAdd(cmd *cobra.Command, args []string) error {
+	cfg, err := GetClientConfig()
+	if err != nil {
+		return err
+	}
+
+	cl, err := client.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	accountID := args[0]
+	featureID, _ := cmd.Flags().GetInt64("feature-id")
+
+	result, err := cl.AddFeatureToAccount(accountID, &scheduler0_client.FeatureRequest{FeatureID: featureID})
+	if err != nil {
+		return fmt.Errorf("failed to add feature to account: %w", err)
+	}
+
+	output, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Println(string(output))
+	return nil
+}
+
+func runAccountsFeatureRemove(cmd *cobra.Command, args []string) error {
+	cfg, err := GetClientConfig()
+	if err != nil {
+		return err
+	}
+
+	cl, err := client.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	accountID := args[0]
+	featureID, _ := cmd.Flags().GetInt64("feature-id")
+
+	if err := cl.RemoveFeatureFromAccount(accountID, &scheduler0_client.FeatureRequest{FeatureID: featureID}); err != nil {
+		return fmt.Errorf("failed to remove feature from account: %w", err)
+	}
+
+	fmt.Printf("Feature %d removed from account %s\n", featureID, accountID)
+	return nil
+}
+
+func runAccountsFeaturesAllAdd(cmd *cobra.Command, args []string) error {
+	cfg, err := GetClientConfig()
+	if err != nil {
+		return err
+	}
+
+	cl, err := client.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	accountID := args[0]
+	if err := cl.AddAllFeaturesToAccount(accountID); err != nil {
+		return fmt.Errorf("failed to add all features to account: %w", err)
+	}
+
+	fmt.Printf("All features added to account %s\n", accountID)
+	return nil
+}
+
+func runAccountsFeaturesAllRemove(cmd *cobra.Command, args []string) error {
+	cfg, err := GetClientConfig()
+	if err != nil {
+		return err
+	}
+
+	cl, err := client.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	accountID := args[0]
+	if err := cl.RemoveAllFeaturesFromAccount(accountID); err != nil {
+		return fmt.Errorf("failed to remove all features from account: %w", err)
+	}
+
+	fmt.Printf("All features removed from account %s\n", accountID)
 	return nil
 }
 
