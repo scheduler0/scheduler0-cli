@@ -81,6 +81,9 @@ func init() {
 	executorsCreateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	executorsCreateCmd.Flags().String("name", "", "Executor name (required)")
 	executorsCreateCmd.Flags().String("type", "", "Executor type: webhook_url or cloud_function (required)")
+	executorsCreateCmd.Flags().String("description", "", "What this executor does; used by 'scheduler0 schedule' to match an executor to a prompt")
+	executorsCreateCmd.Flags().StringSlice("tags", nil, "Comma-separated labels describing purpose/channels (e.g. email,sales)")
+	executorsCreateCmd.Flags().Bool("payload-aggregation", false, "Deliver jobs sharing this executor and the same fire time in a single aggregated call")
 	executorsCreateCmd.Flags().String("region", "", "Cloud region")
 	executorsCreateCmd.Flags().String("cloud-provider", "", "Cloud provider")
 	executorsCreateCmd.Flags().String("cloud-resource-url", "", "Cloud resource URL")
@@ -95,6 +98,9 @@ func init() {
 	executorsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	executorsUpdateCmd.Flags().String("name", "", "Executor name")
 	executorsUpdateCmd.Flags().String("type", "", "Executor type")
+	executorsUpdateCmd.Flags().String("description", "", "What this executor does; used by 'scheduler0 schedule' to match an executor to a prompt")
+	executorsUpdateCmd.Flags().StringSlice("tags", nil, "Comma-separated labels describing purpose/channels (e.g. email,sales)")
+	executorsUpdateCmd.Flags().Bool("payload-aggregation", false, "Deliver jobs sharing this executor and the same fire time in a single aggregated call")
 	executorsUpdateCmd.Flags().String("region", "", "Cloud region")
 	executorsUpdateCmd.Flags().String("cloud-provider", "", "Cloud provider")
 	executorsUpdateCmd.Flags().String("cloud-resource-url", "", "Cloud resource URL")
@@ -190,23 +196,29 @@ func runExecutorsCreate(cmd *cobra.Command, args []string) error {
 	webhookURL, _ := cmd.Flags().GetString("webhook-url")
 	webhookSecret, _ := cmd.Flags().GetString("webhook-secret")
 	webhookMethod, _ := cmd.Flags().GetString("webhook-method")
+	description, _ := cmd.Flags().GetString("description")
+	tags, _ := cmd.Flags().GetStringSlice("tags")
+	payloadAggregation, _ := cmd.Flags().GetBool("payload-aggregation")
 	createdBy, err := actor(cfg)
 	if err != nil {
 		return err
 	}
 
 	executor := &scheduler0_client.ExecutorRequestBody{
-		Name:             name,
-		Type:             executorType,
-		Region:           region,
-		CloudProvider:    cloudProvider,
-		CloudResourceURL: cloudResourceURL,
-		CloudAPIKey:      cloudAPIKey,
-		CloudAPISecret:   cloudAPISecret,
-		WebhookURL:       webhookURL,
-		WebhookSecret:    webhookSecret,
-		WebhookMethod:    webhookMethod,
-		CreatedBy:        createdBy,
+		Name:               name,
+		Type:               executorType,
+		Description:        description,
+		Tags:               tags,
+		Region:             region,
+		CloudProvider:      cloudProvider,
+		CloudResourceURL:   cloudResourceURL,
+		CloudAPIKey:        cloudAPIKey,
+		CloudAPISecret:     cloudAPISecret,
+		WebhookURL:         webhookURL,
+		WebhookSecret:      webhookSecret,
+		WebhookMethod:      webhookMethod,
+		PayloadAggregation: payloadAggregation,
+		CreatedBy:          createdBy,
 	}
 
 	result, err := cl.CreateExecutor(executor)
@@ -242,23 +254,29 @@ func runExecutorsUpdate(cmd *cobra.Command, args []string) error {
 	webhookURL, _ := cmd.Flags().GetString("webhook-url")
 	webhookSecret, _ := cmd.Flags().GetString("webhook-secret")
 	webhookMethod, _ := cmd.Flags().GetString("webhook-method")
+	description, _ := cmd.Flags().GetString("description")
+	tags, _ := cmd.Flags().GetStringSlice("tags")
+	payloadAggregation, _ := cmd.Flags().GetBool("payload-aggregation")
 	modifiedBy, err := actor(cfg)
 	if err != nil {
 		return err
 	}
 
 	update := &scheduler0_client.ExecutorUpdateRequestBody{
-		Name:             name,
-		Type:             executorType,
-		Region:           region,
-		CloudProvider:    cloudProvider,
-		CloudResourceURL: cloudResourceURL,
-		CloudAPIKey:      cloudAPIKey,
-		CloudAPISecret:   cloudAPISecret,
-		WebhookURL:       webhookURL,
-		WebhookSecret:    webhookSecret,
-		WebhookMethod:    webhookMethod,
-		ModifiedBy:       modifiedBy,
+		Name:               name,
+		Type:               executorType,
+		Description:        description,
+		Tags:               tags,
+		Region:             region,
+		CloudProvider:      cloudProvider,
+		CloudResourceURL:   cloudResourceURL,
+		CloudAPIKey:        cloudAPIKey,
+		CloudAPISecret:     cloudAPISecret,
+		WebhookURL:         webhookURL,
+		WebhookSecret:      webhookSecret,
+		WebhookMethod:      webhookMethod,
+		PayloadAggregation: payloadAggregation,
+		ModifiedBy:         modifiedBy,
 	}
 
 	result, err := cl.UpdateExecutor(executorID, update)
