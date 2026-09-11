@@ -61,13 +61,19 @@ make build-all          # cross-compile into bin/ for linux/darwin (amd64, arm64
 
 ### Docker
 
-The repository `Dockerfile` builds a minimal Alpine image with `scheduler0` as the entrypoint:
+A multi-arch (amd64/arm64) image is published to the public ECR gallery on every release, tagged `latest` and with the release version: [gallery.ecr.aws/p2b2u7y5/scheduler0-cli](https://gallery.ecr.aws/p2b2u7y5/scheduler0-cli). `scheduler0` is the entrypoint, so pass the subcommand as the container arguments:
+
+```bash
+docker pull public.ecr.aws/p2b2u7y5/scheduler0-cli:latest   # or :1.0.1
+docker run --rm \
+  -e SCHEDULER0_API_KEY -e SCHEDULER0_API_SECRET -e SCHEDULER0_ACCOUNT_ID -e SCHEDULER0_ACTOR \
+  public.ecr.aws/p2b2u7y5/scheduler0-cli:latest projects list
+```
+
+To build the same image locally from the repository `Dockerfile`:
 
 ```bash
 docker build -t scheduler0-cli .
-docker run --rm \
-  -e SCHEDULER0_API_KEY -e SCHEDULER0_API_SECRET -e SCHEDULER0_ACCOUNT_ID -e SCHEDULER0_ACTOR \
-  scheduler0-cli projects list
 ```
 
 Inside a container there is no browser, so authenticate with environment variables (see [CI / non-interactive authentication](#ci--non-interactive-authentication)) or mount a `~/.scheduler0` directory produced by `scheduler0 login --device`.
