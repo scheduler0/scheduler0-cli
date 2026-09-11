@@ -33,14 +33,14 @@ var executorsGetCmd = &cobra.Command{
 var executorsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new executor",
-	Long:  "Create a new executor (webhook_url or cloud_function)",
+	Long:  "Create a new executor of type webhook_url or cloud_function. To create a local executor for this machine, use 'scheduler0 local-executor register'.",
 	RunE:  runExecutorsCreate,
 }
 
 var executorsUpdateCmd = &cobra.Command{
 	Use:   "update [executor-id]",
 	Short: "Update an executor",
-	Long:  "Update an existing executor",
+	Long:  "Update an existing executor. The update replaces the whole definition: pass --type and every field required for that type again, not just the fields you want to change.",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runExecutorsUpdate,
 }
@@ -96,8 +96,8 @@ func init() {
 	_ = executorsCreateCmd.MarkFlagRequired("type")
 
 	executorsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
-	executorsUpdateCmd.Flags().String("name", "", "Executor name")
-	executorsUpdateCmd.Flags().String("type", "", "Executor type")
+	executorsUpdateCmd.Flags().String("name", "", "Executor name (required)")
+	executorsUpdateCmd.Flags().String("type", "", "Executor type: webhook_url or cloud_function (required)")
 	executorsUpdateCmd.Flags().String("description", "", "What this executor does; used by 'scheduler0 schedule' to match an executor to a prompt")
 	executorsUpdateCmd.Flags().StringSlice("tags", nil, "Comma-separated labels describing purpose/channels (e.g. email,sales)")
 	executorsUpdateCmd.Flags().Bool("payload-aggregation", false, "Deliver jobs sharing this executor and the same fire time in a single aggregated call")
@@ -108,7 +108,9 @@ func init() {
 	executorsUpdateCmd.Flags().String("cloud-api-secret", "", "Cloud API secret")
 	executorsUpdateCmd.Flags().String("webhook-url", "", "Webhook URL")
 	executorsUpdateCmd.Flags().String("webhook-secret", "", "Webhook secret")
-	executorsUpdateCmd.Flags().String("webhook-method", "", "Webhook HTTP method")
+	executorsUpdateCmd.Flags().String("webhook-method", "", "Webhook HTTP method (GET, POST, PUT, DELETE)")
+	_ = executorsUpdateCmd.MarkFlagRequired("name")
+	_ = executorsUpdateCmd.MarkFlagRequired("type")
 
 	executorsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 

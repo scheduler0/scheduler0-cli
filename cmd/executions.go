@@ -12,7 +12,7 @@ import (
 var executionsCmd = &cobra.Command{
 	Use:   "executions",
 	Short: "List job executions",
-	Long:  "List job execution logs with date filtering",
+	Long:  "List job execution logs (GET /api/v1/executions), optionally filtered by date range, project or job",
 	RunE:  runExecutionsList,
 }
 
@@ -44,19 +44,16 @@ func init() {
 	executionsCmd.AddCommand(executionsCleanupCmd)
 
 	executionsCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
-	executionsCmd.Flags().String("start-date", "", "Start date for filtering (RFC3339 format, required)")
-	executionsCmd.Flags().String("end-date", "", "End date for filtering (RFC3339 format, required)")
+	executionsCmd.Flags().String("start-date", "", "Start date for filtering (RFC3339 format, optional)")
+	executionsCmd.Flags().String("end-date", "", "End date for filtering (RFC3339 format, optional)")
 	executionsCmd.Flags().Int64("project-id", 0, "Filter by project ID (0 for all)")
 	executionsCmd.Flags().Int64("job-id", 0, "Filter by job ID (0 for all)")
 	executionsCmd.Flags().Int("limit", 10, "Maximum number of items to return")
 	executionsCmd.Flags().Int("offset", 0, "Number of items to skip")
 
-	_ = executionsCmd.MarkFlagRequired("start-date")
-	_ = executionsCmd.MarkFlagRequired("end-date")
-
 	executionsAnalyticsCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
-	executionsAnalyticsCmd.Flags().String("start-date", "", "Start date, UTC (RFC3339 date, required)")
-	executionsAnalyticsCmd.Flags().String("start-time", "", "Start time, UTC (required)")
+	executionsAnalyticsCmd.Flags().String("start-date", "", "Start date, UTC (YYYY-MM-DD, required)")
+	executionsAnalyticsCmd.Flags().String("start-time", "", "Start time, UTC (HH:MM or HH:MM:SS, required)")
 	_ = executionsAnalyticsCmd.MarkFlagRequired("start-date")
 	_ = executionsAnalyticsCmd.MarkFlagRequired("start-time")
 

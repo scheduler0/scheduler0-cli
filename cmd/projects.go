@@ -41,7 +41,7 @@ var projectsCreateCmd = &cobra.Command{
 var projectsUpdateCmd = &cobra.Command{
 	Use:   "update [project-id]",
 	Short: "Update a project",
-	Long:  "Update an existing project",
+	Long:  "Update an existing project's description (only the description can be changed)",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runProjectsUpdate,
 }
@@ -72,11 +72,13 @@ func init() {
 
 	projectsCreateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 	projectsCreateCmd.Flags().String("name", "", "Project name (required)")
-	projectsCreateCmd.Flags().String("description", "", "Project description")
+	projectsCreateCmd.Flags().String("description", "", "Project description (required)")
 	_ = projectsCreateCmd.MarkFlagRequired("name")
+	_ = projectsCreateCmd.MarkFlagRequired("description")
 
 	projectsUpdateCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
-	projectsUpdateCmd.Flags().String("description", "", "Project description")
+	projectsUpdateCmd.Flags().String("description", "", "New project description (required; the name cannot be changed)")
+	_ = projectsUpdateCmd.MarkFlagRequired("description")
 
 	projectsDeleteCmd.Flags().String("account-id", "", "Account ID (overrides global --account-id for this command)")
 }

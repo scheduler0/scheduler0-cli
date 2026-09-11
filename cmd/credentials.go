@@ -84,8 +84,8 @@ var credentialsCreateCmd = &cobra.Command{
 
 var credentialsUpdateCmd = &cobra.Command{
 	Use:   "update [credential-id]",
-	Short: "Update a credential",
-	Long:  "Update an existing credential",
+	Short: "Update a credential (PUT /credentials/{id})",
+	Long:  "Send a PUT /api/v1/credentials/{id} request. Only the archived flag (and modifiedBy) can change; the api key, secret, scopes and expiry are fixed at creation. Omitting --archived un-archives the credential. To archive, prefer 'scheduler0 credentials archive'.",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runCredentialsUpdate,
 }
@@ -123,7 +123,7 @@ func init() {
 	credentialsListCmd.Flags().String("output", "json", "Output format (json or table)")
 
 	credentialsCreateCmd.Flags().Bool("archived", false, "Whether the credential is archived")
-	credentialsCreateCmd.Flags().String("scopes", "read,write,execute", "Comma-separated scopes for the credential (read,write,execute)")
+	credentialsCreateCmd.Flags().String("scopes", "read,write,execute", "Comma-separated scopes for the credential (read,write,execute,admin; admin can only be granted by an admin credential)")
 
 	credentialsUpdateCmd.Flags().Bool("archived", false, "Whether the credential is archived")
 }
@@ -296,7 +296,7 @@ func runCredentialsCreate(cmd *cobra.Command, args []string) error {
 	output, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Println(string(output))
 	if result != nil && result.Data.ExpiresAt != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "\nCredential expires at: %s. Store the api_secret returned above — it is shown once and cannot be retrieved again.\n", *result.Data.ExpiresAt)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "\nCredential expires at: %s. Store the plaintextSecret returned above — it is shown once and cannot be retrieved again.\n", *result.Data.ExpiresAt)
 	}
 	return nil
 }
